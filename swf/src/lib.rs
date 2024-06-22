@@ -156,7 +156,7 @@ pub fn draw_paths_into_scene(library: &SymbolLibrary, scene: &mut Scene) {
         if let Symbol::Graphic(graphic) = symbol {
             for style_layer in graphic.layers() {
                 let mut path = Outline::new();
-                let paint_id = scene.push_paint(&style_layer.fill());
+                let paint_id = scene.push_paint(style_layer.fill());
 
                 for shape in style_layer.shapes() {
                     let mut contour = Contour::new();

@@ -250,7 +250,7 @@ impl BlendModeExt for BlendMode {
     }
 }
 
-pub(crate) trait ToCombineMode {
+#[allow(unused)] pub(crate) trait ToCombineMode {
     fn to_combine_mode(self) -> i32;
 }
 

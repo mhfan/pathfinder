@@ -125,7 +125,7 @@ struct Scope {
 }
 
 impl MetalDevice {
-    #[inline]
+    #[inline] #[allow(clippy::missing_safety_doc)]
     pub unsafe fn new<D, T>(device: D, texture: T) -> MetalDevice
                             where D: IntoMetalDevice, T: IntoTexture {
         let device = device.into_metal_device();
@@ -657,7 +657,7 @@ impl Device for MetalDevice {
         let dest_private_buffer = dest_allocations.private.as_mut().unwrap();
 
         let byte_start = (start * mem::size_of::<T>()) as u64;
-        let byte_size = (data.len() * mem::size_of::<T>()) as u64;
+        let byte_size = mem::size_of_val(data) as u64;
 
         if dest_allocations.shared.is_none() {
             let resource_options = MTLResourceOptions::CPUCacheModeWriteCombined |
@@ -692,7 +692,7 @@ impl Device for MetalDevice {
             let blit_command_encoder = command_buffer.real_new_blit_command_encoder();
             blit_command_encoder.copy_from_buffer(&staging_buffer.buffer,
                                                 byte_start,
-                                                &dest_private_buffer,
+                                                dest_private_buffer,
                                                 byte_start,
                                                 byte_size);
             blit_command_encoder.end_encoding();
@@ -790,11 +790,11 @@ impl Device for MetalDevice {
             depth: 1,
         };
         let dest_origin = MTLOrigin { x: rect.origin_x() as u64, y: rect.origin_y() as u64, z: 0 };
-        let dest_byte_offset = rect.origin_y() as u64 * src_stride as u64 +
-            rect.origin_x() as u64 * bytes_per_pixel as u64;
+        let dest_byte_offset = rect.origin_y() as u64 * src_stride +
+            rect.origin_x() as u64 * bytes_per_pixel;
 
         let blit_command_encoder = command_buffer.real_new_blit_command_encoder();
-        blit_command_encoder.copy_from_buffer_to_texture(&src_shared_buffer,
+        blit_command_encoder.copy_from_buffer_to_texture(src_shared_buffer,
                                                          dest_byte_offset,
                                                          dest_stride,
                                                          0,
@@ -810,6 +810,7 @@ impl Device for MetalDevice {
     fn read_pixels(&self, target: &RenderTarget<MetalDevice>, viewport: RectI)
                    -> MetalTextureDataReceiver {
         let texture = self.render_target_color_texture(target);
+        #[allow(clippy::arc_with_non_send_sync)]
         let texture_data_receiver =
             MetalTextureDataReceiver(Arc::new(MetalTextureDataReceiverInfo {
                 mutex: Mutex::new(MetalDataReceiverState::Pending),
@@ -834,6 +835,7 @@ impl Device for MetalDevice {
     fn read_buffer(&self, src_buffer: &MetalBuffer, _: BufferTarget, range: Range<usize>)
                    -> MetalBufferDataReceiver {
         let buffer_data_receiver;
+        #[allow(clippy::arc_with_non_send_sync)]
         {
             let scopes = self.scopes.borrow();
             let command_buffer = &scopes.last().unwrap().command_buffer;
@@ -1000,7 +1002,7 @@ impl Device for MetalDevice {
             }
         };
 
-        self.set_compute_uniforms(&encoder, &compute_state);
+        self.set_compute_uniforms(&encoder, compute_state);
         encoder.set_compute_pipeline_state(&compute_pipeline_state);
 
         let local_size = match compute_state.program {
@@ -1018,6 +1020,7 @@ impl Device for MetalDevice {
     }
 
     fn create_timer_query(&self) -> MetalTimerQuery {
+        #[allow(clippy::arc_with_non_send_sync)]
         let query = MetalTimerQuery(Arc::new(MetalTimerQueryInfo {
             mutex: Mutex::new(MetalTimerQueryData {
                 start_time: None,
@@ -1167,7 +1170,7 @@ impl MetalDevice {
         for argument_index in 0..arguments.len() {
             let argument = arguments.object_at(argument_index);
             let argument_name = argument.name();
-            if argument_name == &main_name {
+            if argument_name == main_name {
                 return Some(MetalUniformIndex(argument.index()))
             }
         }
@@ -1185,9 +1188,9 @@ impl MetalDevice {
         for argument_index in 0..arguments.len() {
             let argument = arguments.object_at(argument_index);
             let argument_name = argument.name();
-            if argument_name == &main_name {
+            if argument_name == main_name {
                 main_argument = Some(argument.index());
-            } else if argument_name == &sampler_name {
+            } else if argument_name == sampler_name {
                 sampler_argument = Some(argument.index());
             }
         }
@@ -1207,7 +1210,7 @@ impl MetalDevice {
         for argument_index in 0..arguments.len() {
             let argument = arguments.object_at(argument_index);
             let argument_name = argument.name();
-            if argument_name == &main_name {
+            if argument_name == main_name {
                 return Some(MetalImageIndex(argument.index()))
             }
         }
@@ -1465,10 +1468,10 @@ impl MetalDevice {
         }
 
         // Set uniforms.
-        let uniform_buffer = self.create_uniform_buffer(&render_state.uniforms);
+        let uniform_buffer = self.create_uniform_buffer(render_state.uniforms);
         for (&(uniform, _), buffer_range) in
                 render_state.uniforms.iter().zip(uniform_buffer.ranges.iter()) {
-            self.populate_uniform_indices_if_necessary(uniform, &render_state.program);
+            self.populate_uniform_indices_if_necessary(uniform, render_state.program);
 
             let indices = uniform.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1493,7 +1496,7 @@ impl MetalDevice {
 
         // Set textures.
         for &(texture_param, texture) in render_state.textures {
-            self.populate_texture_indices_if_necessary(texture_param, &render_state.program);
+            self.populate_texture_indices_if_necessary(texture_param, render_state.program);
 
             let indices = texture_param.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1516,7 +1519,7 @@ impl MetalDevice {
 
         // Set images.
         for &(image_param, image, _) in render_state.images {
-            self.populate_image_indices_if_necessary(image_param, &render_state.program);
+            self.populate_image_indices_if_necessary(image_param, render_state.program);
 
             let indices = image_param.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1538,7 +1541,7 @@ impl MetalDevice {
         // Set storage buffers.
         for &(storage_buffer_id, storage_buffer_binding) in render_state.storage_buffers {
             self.populate_storage_buffer_indices_if_necessary(storage_buffer_id,
-                                                              &render_state.program);
+                                                              render_state.program);
 
             let indices = storage_buffer_id.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1564,10 +1567,10 @@ impl MetalDevice {
                             compute_command_encoder: &ComputeCommandEncoder,
                             compute_state: &ComputeState<MetalDevice>) {
         // Set uniforms.
-        let uniform_buffer = self.create_uniform_buffer(&compute_state.uniforms);
+        let uniform_buffer = self.create_uniform_buffer(compute_state.uniforms);
         for (&(uniform, _), buffer_range) in
                 compute_state.uniforms.iter().zip(uniform_buffer.ranges.iter()) {
-            self.populate_uniform_indices_if_necessary(uniform, &compute_state.program);
+            self.populate_uniform_indices_if_necessary(uniform, compute_state.program);
 
             let indices = uniform.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1586,7 +1589,7 @@ impl MetalDevice {
 
         // Set textures.
         for &(texture_param, texture) in compute_state.textures {
-            self.populate_texture_indices_if_necessary(texture_param, &compute_state.program);
+            self.populate_texture_indices_if_necessary(texture_param, compute_state.program);
 
             let indices = texture_param.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1602,7 +1605,7 @@ impl MetalDevice {
 
         // Set images.
         for &(image_param, image, _) in compute_state.images {
-            self.populate_image_indices_if_necessary(image_param, &compute_state.program);
+            self.populate_image_indices_if_necessary(image_param, compute_state.program);
 
             let indices = image_param.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1619,7 +1622,7 @@ impl MetalDevice {
         // Set storage buffers.
         for &(storage_buffer_id, storage_buffer_binding) in compute_state.storage_buffers {
             self.populate_storage_buffer_indices_if_necessary(storage_buffer_id,
-                                                              &compute_state.program);
+                                                              compute_state.program);
 
             let indices = storage_buffer_id.indices.borrow_mut();
             let indices = indices.as_ref().unwrap();
@@ -1707,7 +1710,7 @@ impl MetalDevice {
         render_command_encoder.set_vertex_bytes(
             argument_index.0,
             (buffer_range.end - buffer_range.start) as u64,
-            &buffer[buffer_range.start as usize] as *const u8 as *const _)
+            &buffer[buffer_range.start] as *const u8 as *const _)
     }
 
     fn set_fragment_uniform(&self,
@@ -1718,7 +1721,7 @@ impl MetalDevice {
         render_command_encoder.set_fragment_bytes(
             argument_index.0,
             (buffer_range.end - buffer_range.start) as u64,
-            &buffer[buffer_range.start as usize] as *const u8 as *const _)
+            &buffer[buffer_range.start] as *const u8 as *const _)
     }
 
     fn set_compute_uniform(&self,
@@ -1729,7 +1732,7 @@ impl MetalDevice {
         compute_command_encoder.set_bytes(
             argument_index.0,
             (buffer_range.end - buffer_range.start) as u64,
-            &buffer[buffer_range.start as usize] as *const u8 as *const _)
+            &buffer[buffer_range.start] as *const u8 as *const _)
     }
 
     fn encode_vertex_texture_parameter(&self,
@@ -1765,7 +1768,7 @@ impl MetalDevice {
             &self,
             pipeline_color_attachment: &RenderPipelineColorAttachmentDescriptorRef,
             render_state: &RenderState<MetalDevice>) {
-        let pixel_format = self.render_target_color_texture(&render_state.target).pixel_format();
+        let pixel_format = self.render_target_color_texture(render_state.target).pixel_format();
         pipeline_color_attachment.set_pixel_format(pixel_format);
 
         match render_state.options.blend {
@@ -1908,7 +1911,7 @@ impl MetalDevice {
             let scopes = self.scopes.borrow();
             let command_buffer = &scopes.last().unwrap().command_buffer;
             let encoder = command_buffer.real_new_blit_command_encoder();
-            encoder.synchronize_resource(&texture);
+            encoder.synchronize_resource(texture);
             command_buffer.add_completed_handler(block);
             encoder.end_encoding();
         }
@@ -1972,6 +1975,7 @@ impl<'a> IntoMetalDevice for &'a DeviceRef {
 }
 
 pub trait IntoTexture {
+    #[allow(clippy::missing_safety_doc)]
     unsafe fn into_texture(self, metal_device: &metal::Device) -> Texture;
 }
 
@@ -2087,7 +2091,7 @@ impl DepthFuncExt for DepthFunc {
     }
 }
 
-trait ImageAccessExt {
+#[allow(unused)] trait ImageAccessExt {
     fn to_metal_resource_usage(self) -> MTLResourceUsage;
 }
 
@@ -2127,7 +2131,7 @@ impl StencilFuncExt for StencilFunc {
     }
 }
 
-trait UniformDataExt {
+#[allow(unused)] trait UniformDataExt {
     fn as_bytes(&self) -> &[u8];
 }
 
@@ -2136,7 +2140,7 @@ impl UniformDataExt for UniformData {
         unsafe {
             match *self {
                 UniformData::Float(ref data) => {
-                    slice::from_raw_parts(data as *const f32 as *const u8, 4 * 1)
+                    slice::from_raw_parts(data as *const f32 as *const u8, 4)
                 }
                 UniformData::IVec2(ref data) => {
                     slice::from_raw_parts(data as *const I32x2 as *const u8, 4 * 3)
@@ -2145,7 +2149,7 @@ impl UniformDataExt for UniformData {
                     slice::from_raw_parts(data as *const i32 as *const u8, 4 * 3)
                 }
                 UniformData::Int(ref data) => {
-                    slice::from_raw_parts(data as *const i32 as *const u8, 4 * 1)
+                    slice::from_raw_parts(data as *const i32 as *const u8, 4)
                 }
                 UniformData::Mat2(ref data) => {
                     slice::from_raw_parts(data as *const F32x4 as *const u8, 4 * 4)
@@ -2330,9 +2334,9 @@ impl SharedEvent {
                 *mut Block<(*mut Object, u64), ()> as
                 *mut BlockBase<(*mut Object, u64), ()>;
             (*block).flags |= BLOCK_HAS_SIGNATURE | BLOCK_HAS_COPY_DISPOSE;
-            (*block).extra = &BLOCK_EXTRA;
+            (*block).extra = std::ptr::addr_of!(BLOCK_EXTRA);
             let () = msg_send![self.0, notifyListener:listener.0 atValue:value block:block];
-            mem::forget(block);
+            //mem::forget(block);
         }
 
         extern "C" fn dtor(_: *mut BlockBase<(*mut Object, u64), ()>) {}
@@ -2343,8 +2347,8 @@ impl SharedEvent {
             unknown0: 0 as *mut i32,
             unknown1: 0 as *mut i32,
             unknown2: 0 as *mut i32,
-            dtor: dtor,
-            signature: unsafe { &SIGNATURE_PTR },
+            dtor,
+            signature: unsafe { std::ptr::addr_of!(SIGNATURE_PTR) },
         };
     }
 }
@@ -2361,7 +2365,7 @@ impl SharedEventListener {
     fn new_from_dispatch_queue(queue: &Queue) -> SharedEventListener {
         unsafe {
             let listener: *mut Object = msg_send![class!(MTLSharedEventListener), alloc];
-            let raw_queue: *const *mut dispatch_queue_t = mem::transmute(queue);
+            let raw_queue: *const *mut dispatch_queue_t = queue as *const _ as _;
             SharedEventListener(msg_send![listener, initWithDispatchQueue:*raw_queue])
         }
     }
@@ -2399,7 +2403,7 @@ impl VertexAttributeArray {
 
 // Extra methods missing from `metal-rs`
 
-trait CoreAnimationLayerExt {
+#[allow(unused)] trait CoreAnimationLayerExt {
     fn device(&self) -> metal::Device;
 }
 
@@ -2506,7 +2510,7 @@ impl DeviceExt for metal::Device {
             if !error_ptr.is_null() {
                 let description: CFStringRef = msg_send![error_ptr, description];
                 panic!("Render pipeline state construction failed: {}",
-                       CFString::wrap_under_get_rule(description).to_string());
+                       CFString::wrap_under_get_rule(description));
             }
             assert!(!render_pipeline_state_ptr.is_null());
             assert!(!reflection_ptr.is_null());
@@ -2524,7 +2528,7 @@ impl DeviceExt for metal::Device {
     }
 }
 
-trait FunctionExt {
+#[allow(unused)] trait FunctionExt {
     // `vertex_attributes()` in `metal-rs` segfaults! This is a better definition.
     fn real_vertex_attributes(&self) -> VertexAttributeArray;
     fn new_argument_encoder_with_reflection(&self, buffer_index: u64)
@@ -2568,7 +2572,7 @@ impl RenderPipelineReflectionExt for RenderPipelineReflectionRef {
     }
 }
 
-trait StructMemberExt {
+#[allow(unused)] trait StructMemberExt {
     fn argument_index(&self) -> u64;
     fn pointer_type(&self) -> *mut Object;
 }
@@ -2585,7 +2589,7 @@ impl StructMemberExt for StructMemberRef {
 
 trait ComputeCommandEncoderExt {
     fn update_fence(&self, fence: &Fence);
-    fn wait_for_fence(&self, fence: &Fence);
+    #[allow(unused)] fn wait_for_fence(&self, fence: &Fence);
 }
 
 impl ComputeCommandEncoderExt for ComputeCommandEncoder {
@@ -2598,7 +2602,7 @@ impl ComputeCommandEncoderExt for ComputeCommandEncoder {
     }
 }
 
-trait RenderCommandEncoderExt {
+#[allow(unused)] trait RenderCommandEncoderExt {
     fn update_fence_before_stages(&self, fence: &Fence, stages: MTLRenderStage);
     fn wait_for_fence_before_stages(&self, fence: &Fence, stages: MTLRenderStage);
 }

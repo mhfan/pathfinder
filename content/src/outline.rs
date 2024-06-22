@@ -71,7 +71,7 @@ bitflags! {
 
 impl Outline {
     /// Creates a new empty outline with no contours.
-    #[inline]
+    #[inline] #[allow(clippy::new_without_default)]
     pub fn new() -> Outline {
         Outline {
             contours: vec![],
@@ -199,7 +199,7 @@ impl Outline {
         for contour in &mut self.contours {
             contour.update_bounds(&mut new_bounds);
         }
-        self.bounds = new_bounds.unwrap_or_else(|| RectF::default());
+        self.bounds = new_bounds.unwrap_or_else(RectF::default);
 
         last_contour
     }
@@ -215,7 +215,7 @@ impl Outline {
             contour.transform(transform);
             contour.update_bounds(&mut new_bounds);
         }
-        self.bounds = new_bounds.unwrap_or_else(|| RectF::default());
+        self.bounds = new_bounds.unwrap_or_else(RectF::default);
     }
 
     /// Applies an affine transform to this outline and all its subpaths, consuming this outline
@@ -234,7 +234,7 @@ impl Outline {
             contour.apply_perspective(perspective);
             contour.update_bounds(&mut new_bounds);
         }
-        self.bounds = new_bounds.unwrap_or_else(|| RectF::default());
+        self.bounds = new_bounds.unwrap_or_else(RectF::default);
     }
 
     /// Thickens the outline by the given amount.
@@ -269,7 +269,7 @@ impl Outline {
             return;
         }
 
-        for contour in mem::replace(&mut self.contours, vec![]) {
+        for contour in mem::take(&mut self.contours) {
             self.push_contour(ContourPolygonClipper::new(clip_polygon, contour).clip());
         }
     }
@@ -322,7 +322,7 @@ impl Debug for Outline {
 
 impl Contour {
     /// Creates a new empty unclosed subpath.
-    #[inline]
+    #[inline] #[allow(clippy::new_without_default)]
     pub fn new() -> Contour {
         Contour {
             points: vec![],
@@ -1057,10 +1057,10 @@ impl<'a> Iterator for ContourIter<'a> {
         let point3 = contour.position_of(point3_index);
         self.index += 1;
         debug_assert!(contour.point_is_endpoint(point3_index));
-        return Some(Segment::cubic(
+        Some(Segment::cubic(
             LineSegment2F::new(point0, point3),
             LineSegment2F::new(point1, point2),
-        ));
+        ))
     }
 }
 

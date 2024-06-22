@@ -25,7 +25,6 @@ use pathfinder_geometry::line_segment::LineSegment2F;
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::{Vector2F, Vector2I, vec2f, vec2i};
 use pathfinder_simd::default::{F32x2, U32x2};
-use std::f32::NEG_INFINITY;
 
 const FLATTENING_TOLERANCE: f32 = 0.25;
 
@@ -37,6 +36,7 @@ pub(crate) struct Tiler<'a, 'b, 'c, 'd> {
 }
 
 impl<'a, 'b, 'c, 'd> Tiler<'a, 'b, 'c, 'd> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(scene_builder: &'a SceneBuilder<'b, 'a, 'c, 'd>,
                       path_id: PathId,
                       outline: &'a Outline,
@@ -47,12 +47,9 @@ impl<'a, 'b, 'c, 'd> Tiler<'a, 'b, 'c, 'd> {
                       built_clip_paths: &'a [BuiltPath],
                       path_info: TilingPathInfo)
                       -> Tiler<'a, 'b, 'c, 'd> {
-        let bounds = outline.bounds().intersection(view_box).unwrap_or(RectF::default());
+        let bounds = outline.bounds().intersection(view_box).unwrap_or_default();
 
-        let clip_path = match clip_path_id {
-            Some(clip_path_id) => Some(&built_clip_paths[clip_path_id.0 as usize]),
-            _ => None,
-        };
+        let clip_path = clip_path_id.map(|clip_path_id| &built_clip_paths[clip_path_id.0 as usize]);
 
         let object_builder = ObjectBuilder::new(path_id,
                                                 bounds,
@@ -192,7 +189,7 @@ fn process_line_segment(line_segment: LineSegment2F,
                         scene_builder: &SceneBuilder,
                         object_builder: &mut ObjectBuilder) {
     let view_box = scene_builder.scene.view_box();
-    let clip_box = RectF::from_points(vec2f(view_box.min_x(), NEG_INFINITY),
+    let clip_box = RectF::from_points(vec2f(view_box.min_x(), f32::NEG_INFINITY),
                                       view_box.lower_right());
     let line_segment = match clip::clip_line_segment_to_rect(line_segment, clip_box) {
         None => return,

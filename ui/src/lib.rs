@@ -26,7 +26,6 @@ use pathfinder_gpu::{RenderState, RenderTarget, TextureFormat, UniformData, Vert
 use pathfinder_gpu::{VertexAttrDescriptor, VertexAttrType};
 use pathfinder_resources::ResourceLoader;
 use pathfinder_simd::default::F32x4;
-use serde_json;
 use std::mem;
 
 pub const PADDING: i32 = 12;
@@ -55,11 +54,11 @@ static OUTLINE_COLOR:     ColorU = ColorU { r: 255, g: 255, b: 255, a: 192 };
 
 static INVERTED_TEXT_COLOR: ColorU = ColorU { r: 0,   g: 0,   b: 0,   a: 255      };
 
-static FONT_JSON_VIRTUAL_PATH: &'static str = "debug-fonts/regular.json";
-static FONT_PNG_NAME: &'static str = "debug-font";
+static FONT_JSON_VIRTUAL_PATH: &str = "debug-fonts/regular.json";
+static FONT_PNG_NAME: &str = "debug-font";
 
-static CORNER_FILL_PNG_NAME: &'static str = "debug-corner-fill";
-static CORNER_OUTLINE_PNG_NAME: &'static str = "debug-corner-outline";
+static CORNER_FILL_PNG_NAME: &str = "debug-corner-fill";
+static CORNER_OUTLINE_PNG_NAME: &str = "debug-corner-outline";
 
 static QUAD_INDICES:              [u32; 6] = [0, 1, 3, 1, 2, 3];
 static RECT_LINE_INDICES:         [u32; 8] = [0, 1, 1, 2, 2, 3, 3, 0];
@@ -186,8 +185,8 @@ impl<D> UIPresenter<D> where D: Device {
         {
             let vertex_buffer = allocator.get_general_buffer(vertex_buffer_id);
             let index_buffer = allocator.get_index_buffer(index_buffer_id);
-            device.upload_to_buffer(&vertex_buffer, 0, vertex_data, BufferTarget::Vertex);
-            device.upload_to_buffer(&index_buffer, 0, index_data, BufferTarget::Index);
+            device.upload_to_buffer(vertex_buffer, 0, vertex_data, BufferTarget::Vertex);
+            device.upload_to_buffer(index_buffer, 0, index_data, BufferTarget::Index);
             let solid_vertex_array = DebugSolidVertexArray::new(device,
                                                                 &self.solid_program,
                                                                 vertex_buffer,
@@ -237,7 +236,7 @@ impl<D> UIPresenter<D> where D: Device {
             let info = &self.font.characters[&character];
             let position_rect =
                 RectI::new(vec2i(next.x() - info.origin_x, next.y() - info.origin_y),
-                           vec2i(info.width as i32, info.height as i32));
+                           vec2i(info.width, info.height));
             let tex_coord_rect = RectI::new(vec2i(info.x, info.y), vec2i(info.width, info.height));
             let first_vertex_index = vertex_data.len();
             vertex_data.extend_from_slice(&[
@@ -267,7 +266,7 @@ impl<D> UIPresenter<D> where D: Device {
                         origin: Vector2I,
                         texture: &D::Texture,
                         color: ColorU) {
-        let position_rect = RectI::new(origin, device.texture_size(&texture));
+        let position_rect = RectI::new(origin, device.texture_size(texture));
         let tex_coord_rect = RectI::new(Vector2I::default(), position_rect.size());
         let vertex_data = [
             DebugTextureVertex::new(position_rect.origin(),      tex_coord_rect.origin()),
@@ -335,7 +334,7 @@ impl<D> UIPresenter<D> where D: Device {
         ];
 
         let mut index_data = Vec::with_capacity(18);
-        index_data.extend(QUAD_INDICES.iter().map(|&index| index + 0));
+        index_data.extend(QUAD_INDICES.iter().copied());
         index_data.extend(QUAD_INDICES.iter().map(|&index| index + 4));
         index_data.extend(QUAD_INDICES.iter().map(|&index| index + 8));
 
@@ -399,7 +398,7 @@ impl<D> UIPresenter<D> where D: Device {
                                  color: ColorU,
                                  texture: &D::Texture,
                                  corner_rects: &CornerRects) {
-        let corner_size = device.texture_size(&texture);
+        let corner_size = device.texture_size(texture);
         let tex_coord_rect = RectI::new(Vector2I::default(), corner_size);
 
         let vertex_data = vec![
@@ -441,7 +440,7 @@ impl<D> UIPresenter<D> where D: Device {
         ];
 
         let mut index_data = Vec::with_capacity(24);
-        index_data.extend(QUAD_INDICES.iter().map(|&index| index + 0));
+        index_data.extend(QUAD_INDICES.iter().copied());
         index_data.extend(QUAD_INDICES.iter().map(|&index| index + 4));
         index_data.extend(QUAD_INDICES.iter().map(|&index| index + 8));
         index_data.extend(QUAD_INDICES.iter().map(|&index| index + 12));
@@ -476,8 +475,8 @@ impl<D> UIPresenter<D> where D: Device {
         {
             let vertex_buffer = allocator.get_general_buffer(vertex_buffer_id);
             let index_buffer = allocator.get_index_buffer(index_buffer_id);
-            device.upload_to_buffer(&vertex_buffer, 0, vertex_data, BufferTarget::Vertex);
-            device.upload_to_buffer(&index_buffer, 0, index_data, BufferTarget::Index);
+            device.upload_to_buffer(vertex_buffer, 0, vertex_data, BufferTarget::Vertex);
+            device.upload_to_buffer(index_buffer, 0, index_data, BufferTarget::Index);
 
             let texture_vertex_array = DebugTextureVertexArray::new(device,
                                                                     &self.texture_program,
@@ -489,7 +488,7 @@ impl<D> UIPresenter<D> where D: Device {
                 program: &self.texture_program.program,
                 vertex_array: &texture_vertex_array.vertex_array,
                 primitive: Primitive::Triangles,
-                textures: &[(&self.texture_program.texture, &texture)],
+                textures: &[(&self.texture_program.texture, texture)],
                 images: &[],
                 storage_buffers: &[],
                 uniforms: &[
@@ -497,7 +496,7 @@ impl<D> UIPresenter<D> where D: Device {
                     UniformData::Vec2(self.framebuffer_size.0.to_f32x2())),
                     (&self.texture_program.color_uniform, get_color_uniform(color)),
                     (&self.texture_program.texture_size_uniform,
-                    UniformData::Vec2(device.texture_size(&texture).0.to_f32x2()))
+                    UniformData::Vec2(device.texture_size(texture).0.to_f32x2()))
                 ],
                 viewport: RectI::new(Vector2I::default(), self.framebuffer_size),
                 options: RenderOptions {
@@ -542,7 +541,7 @@ impl<D> UIPresenter<D> where D: Device {
             value = new_value;
         }
 
-        origin = origin + vec2i(0, BUTTON_TEXT_OFFSET);
+        origin += vec2i(0, BUTTON_TEXT_OFFSET);
         for (segment_index, segment_label) in segment_labels.iter().enumerate() {
             let label_width = self.measure_text(segment_label);
             let offset = SEGMENT_SIZE / 2 - label_width / 2;
@@ -748,8 +747,8 @@ impl<D> DebugSolidVertexArray<D> where D: Device {
 
         let position_attr =
             device.get_vertex_attr(&debug_solid_program.program, "Position").unwrap();
-        device.bind_buffer(&vertex_array, &vertex_buffer, BufferTarget::Vertex);
-        device.bind_buffer(&vertex_array, &index_buffer, BufferTarget::Index);
+        device.bind_buffer(&vertex_array, vertex_buffer, BufferTarget::Vertex);
+        device.bind_buffer(&vertex_array, index_buffer, BufferTarget::Index);
         device.configure_vertex_attr(&vertex_array, &position_attr, &VertexAttrDescriptor {
             size: 2,
             class: VertexAttrClass::Int,
@@ -858,7 +857,7 @@ impl UIEventQueue {
     }
 
     pub fn drain(&mut self) -> Vec<UIEvent> {
-        mem::replace(&mut self.events, vec![])
+        mem::take(&mut self.events)
     }
 
     pub fn handle_mouse_down_in_rect(&mut self, rect: RectI) -> Option<Vector2I> {

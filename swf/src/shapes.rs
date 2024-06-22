@@ -28,9 +28,7 @@ pub(crate) struct LineSegment {
 
 impl LineSegment {
     fn reverse(&mut self) {
-        let tmp = self.from;
-        self.from = self.to;
-        self.to = tmp;
+        mem::swap(&mut self.from, &mut self.to);
     }
 }
 
@@ -66,7 +64,7 @@ impl Shape {
     }
 
     fn prepend_shape(&mut self, shape: &mut Shape) {
-        shape.append_shape(&self);
+        shape.append_shape(self);
         mem::swap(&mut self.outline, &mut shape.outline);
     }
 
@@ -237,12 +235,12 @@ impl StyleLayer {
 
 
 fn get_new_styles<'a>(
-    fills: &'a Vec<FillStyle>,
-    lines: &'a Vec<LineStyle>
+    fills: &'a [FillStyle],
+    lines: &'a [LineStyle]
 ) -> impl Iterator<Item=PaintOrLine> + 'a {
     // This enforces the order that fills and line groupings are added in.
     // Fills always come first.
-    fills.iter().filter_map(|fill_style| {
+    fills.iter().map(|fill_style| {
         match fill_style {
             FillStyle::Solid(
                 fill_styles::Solid {
@@ -254,12 +252,12 @@ fn get_new_styles<'a>(
                     }
                 }
             ) => {
-                Some(PaintOrLine::Paint(Paint::from_color(ColorU { r: *r, g: *g, b: *b, a: *a })))
+                PaintOrLine::Paint(Paint::from_color(ColorU { r: *r, g: *g, b: *b, a: *a }))
             }
             _ => unimplemented!("Unimplemented fill style")
         }
     }).chain(
-        lines.iter().filter_map(|LineStyle {
+        lines.iter().map(|LineStyle {
             width,
             fill,
             join,
@@ -286,7 +284,7 @@ fn get_new_styles<'a>(
                 // strokes, so lets assume that they're always the same for the inputs we care about.
                 // Alternately, we split a line in two with a diff cap style for each.
                 // assert_eq!(start_cap, end_cap);
-                Some(PaintOrLine::Line(SwfLineStyle {
+                PaintOrLine::Line(SwfLineStyle {
                     width: Twips(*width as i32),
                     color: Paint::from_color(ColorU { r: *r, g: *g, b: *b, a: *a }),
                     join: match join {
@@ -301,7 +299,7 @@ fn get_new_styles<'a>(
                         CapStyle::Square => LineCap::Square,
                         CapStyle::Round => LineCap::Round,
                     },
-                }))
+                })
             } else {
                 unimplemented!("unimplemented line fill style");
             }
@@ -460,14 +458,12 @@ pub(crate) fn decode_shape(shape: &DefineShape) -> GraphicLayers {
                     for fill_id in [
                         current_right_fill,
                         current_left_fill
-                    ].iter() {
-                        if let Some(fill_id) = fill_id {
-                            graphic
-                                .with_fill_style_mut(*fill_id)
-                                .unwrap()
-                                .current_shape_mut()
-                                .add_line_segment(new_segment);
-                        }
+                    ].iter().flatten() {
+                        graphic
+                            .with_fill_style_mut(*fill_id)
+                            .unwrap()
+                            .current_shape_mut()
+                            .add_line_segment(new_segment);
                     }
                 } else if both_fills_set_and_same {
                     for (fill_id, direction) in [
@@ -519,6 +515,7 @@ fn find_matches(
             last.reverse();
         }
         let mut found_match = false;
+        #[allow(clippy::mut_range_bound)]
         for i in first_open_index..shapes.len() {
             let fragment = &mut shapes[i];
             if last.comes_after(fragment) {

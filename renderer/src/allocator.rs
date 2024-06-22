@@ -209,10 +209,7 @@ impl TextureAtlasAllocator {
     #[inline]
     #[allow(dead_code)]
     fn is_empty(&self) -> bool {
-        match self.root {
-            TreeNode::EmptyLeaf => true,
-            _ => false,
-        }
+        matches!(self.root, TreeNode::EmptyLeaf)
     }
 }
 
@@ -270,7 +267,7 @@ impl TreeNode {
                 }
 
                 self.merge_if_necessary();
-                return None;
+                None
             }
             TreeNode::EmptyLeaf | TreeNode::FullLeaf => unreachable!(),
         }
@@ -302,14 +299,12 @@ impl TreeNode {
                 child_index = 1;
                 child_origin += vec2i(child_size as i32, 0);
             }
+        } else if requested_origin.x() < this_center.x() {
+            child_index = 2;
+            child_origin += vec2i(0, child_size as i32);
         } else {
-            if requested_origin.x() < this_center.x() {
-                child_index = 2;
-                child_origin += vec2i(0, child_size as i32);
-            } else {
-                child_index = 3;
-                child_origin = this_center;
-            }
+            child_index = 3;
+            child_origin = this_center;
         }
 
         match *self {
@@ -322,18 +317,12 @@ impl TreeNode {
     }
 
     fn merge_if_necessary(&mut self) {
-        match *self {
-            TreeNode::Parent(ref mut kids) => {
-                if kids.iter().all(|kid| {
-                    match **kid {
-                        TreeNode::EmptyLeaf => true,
-                        _ => false,
-                    }
-                }) {
-                    *self = TreeNode::EmptyLeaf;
-                }
+        if let TreeNode::Parent(kids) = self {
+            if kids.iter().all(|kid| {
+                matches!(**kid, TreeNode::EmptyLeaf)
+            }) {
+                *self = TreeNode::EmptyLeaf;
             }
-            _ => {}
         }
     }
 }
@@ -354,7 +343,7 @@ impl<'a> Iterator for TexturePageIter<'a> {
         loop {
             self.next_index += 1;
             if self.next_index >= self.allocator.pages.len() ||
-                    self.allocator.pages[self.next_index as usize].is_some() {
+                    self.allocator.pages[self.next_index].is_some() {
                 break;
             }
         }
@@ -365,9 +354,6 @@ impl<'a> Iterator for TexturePageIter<'a> {
 #[cfg(test)]
 mod test {
     use pathfinder_geometry::vector::vec2i;
-    use quickcheck;
-    use std::u32;
-
     use super::TextureAtlasAllocator;
 
     #[test]

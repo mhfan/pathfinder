@@ -27,7 +27,7 @@ fn main() {
     for line in src.lines() {
         let line = line.unwrap();
         let line = line.trim_start().trim_end();
-        if line.is_empty() || line.starts_with("#") {
+        if line.is_empty() || line.starts_with('#') {
             continue;
         }
 

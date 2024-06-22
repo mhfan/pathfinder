@@ -62,7 +62,7 @@ impl<W> DemoApp<W> where W: Window {
                 let viewport = self.window.viewport(View::Stereo(0));
                 if self.scene_framebuffer.is_none()
                     || self.renderer.device().texture_size(
-                        &self.renderer.device().framebuffer_texture(self.scene_framebuffer
+                        self.renderer.device().framebuffer_texture(self.scene_framebuffer
                                                                         .as_ref()
                                                                         .unwrap()),
                     ) != viewport.size()

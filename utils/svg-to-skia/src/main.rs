@@ -12,8 +12,8 @@ use std::env;
 use usvg::{Node, NodeKind, Options, Paint, PathSegment, Tree};
 
 fn main() {
-    let input_path = env::args().skip(1).next().unwrap();
-    let tree = Tree::from_file(&input_path, &Options::default()).unwrap();
+    let input_path = env::args().nth(1).unwrap();
+    let tree = Tree::from_file(input_path, &Options::default()).unwrap();
 
     println!("#ifndef PAINT_H");
     println!("#define PAINT_H");
@@ -81,7 +81,7 @@ fn set_color(paint: &Paint) {
         println!("    paint.setColor(0x{:x});",
                 ((color.red as u32) << 16) |
                     ((color.green as u32) << 8) |
-                    ((color.blue as u32) << 0) |
+                    (color.blue as u32) |
                     (0xff << 24));
     }
 }

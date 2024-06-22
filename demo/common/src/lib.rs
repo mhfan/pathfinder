@@ -58,7 +58,7 @@ use pathfinder_gl::GLDevice as DeviceImpl;
 #[cfg(all(target_os = "macos", not(feature = "pf-gl")))]
 use pathfinder_metal::MetalDevice as DeviceImpl;
 
-static DEFAULT_SVG_VIRTUAL_PATH: &'static str = "svg/Ghostscript_Tiger.svg";
+static DEFAULT_SVG_VIRTUAL_PATH: &str = "svg/Ghostscript_Tiger.svg";
 
 const MOUSELOOK_ROTATION_SPEED: f32 = 0.007;
 const CAMERA_VELOCITY: f32 = 0.02;
@@ -181,8 +181,8 @@ impl<W> DemoApp<W> where W: Window {
         let ground_program = GroundProgram::new(renderer.device(), resources);
         let ground_vertex_array = GroundVertexArray::new(renderer.device(),
                                                          &ground_program,
-                                                         &renderer.quad_vertex_positions_buffer(),
-                                                         &renderer.quad_vertex_indices_buffer());
+                                                         renderer.quad_vertex_positions_buffer(),
+                                                         renderer.quad_vertex_indices_buffer());
 
         let mut message_epoch = 0;
         emit_message::<W>(
@@ -465,7 +465,7 @@ impl<W> DemoApp<W> where W: Window {
                     message_type: event_id,
                     message_data: expected_epoch,
                 } if event_id == self.expire_message_event_id
-                    && expected_epoch as u32 == self.message_epoch =>
+                    && expected_epoch == self.message_epoch =>
                 {
                     self.ui_model.message = String::new();
                     self.dirty = true;
@@ -623,7 +623,7 @@ impl<W> DemoApp<W> where W: Window {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone)] #[allow(clippy::manual_non_exhaustive)]
 pub struct Options {
     pub jobs: Option<usize>,
     pub mode: Mode,
@@ -632,7 +632,7 @@ pub struct Options {
     pub background_color: BackgroundColor,
     pub high_performance_gpu: bool,
     pub renderer_level: Option<RendererLevel>,
-    hidden_field_for_future_proofing: (),
+    #[allow(unused)] hidden_field_for_future_proofing: (),
 }
 
 impl Default for Options {
@@ -767,7 +767,7 @@ impl Content {
     fn render(&mut self, viewport_size: Vector2I, filter: Option<PatternFilter>) -> (Scene, String) {
         match *self {
             Content::Svg(ref tree) => {
-                let built_svg = build_svg_tree(&tree, viewport_size, filter);
+                let built_svg = build_svg_tree(tree, viewport_size, filter);
                 let message = get_svg_building_message(&built_svg);
                 (built_svg.scene, message)
             }
@@ -787,7 +787,7 @@ fn load_scene(resource_loader: &dyn ResourceLoader,
     let data = match *input_path {
         DataPath::Default => resource_loader.slurp(DEFAULT_SVG_VIRTUAL_PATH).unwrap(),
         DataPath::Resource(ref name) => resource_loader.slurp(name).unwrap(),
-        DataPath::Path(ref path) => std::fs::read(path).unwrap().into()
+        DataPath::Path(ref path) => std::fs::read(path).unwrap()
     };
 
     if let Ok(tree) = SvgTree::from_data(&data, &UsvgOptions::default()) {
@@ -815,7 +815,7 @@ fn build_svg_tree(tree: &SvgTree, viewport_size: Vector2I, filter: Option<Patter
         FilterInfo { filter, render_target_id, render_target_size }
     });
 
-    let mut built_svg = SVGScene::from_tree_and_scene(&tree, scene);
+    let mut built_svg = SVGScene::from_tree_and_scene(tree, scene);
     if let Some(FilterInfo { filter, render_target_id, render_target_size }) = filter_info {
         let mut pattern = Pattern::from_render_target(render_target_id, render_target_size);
         pattern.set_filter(Some(filter));

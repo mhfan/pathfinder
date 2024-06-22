@@ -50,6 +50,7 @@ pub trait Window {
     fn create_user_event_id(&self) -> u32;
     fn push_user_event(message_type: u32, message_data: u32);
     fn present_open_svg_dialog(&mut self);
+    #[allow(clippy::result_unit_err)]
     fn run_save_dialog(&self, extension: &str) -> Result<PathBuf, ()>;
 
     fn adjust_thread_pool_settings(&self, builder: ThreadPoolBuilder) -> ThreadPoolBuilder {

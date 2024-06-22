@@ -45,7 +45,7 @@ impl<D> FillVertexArrayD3D9<D> where D: Device {
             divisor: 0,
             buffer_index: 0,
         });
-        device.bind_buffer(&vertex_array, &vertex_buffer, BufferTarget::Vertex);
+        device.bind_buffer(&vertex_array, vertex_buffer, BufferTarget::Vertex);
         device.configure_vertex_attr(&vertex_array, &line_segment_attr, &VertexAttrDescriptor {
             size: 4,
             class: VertexAttrClass::Int,
@@ -185,7 +185,7 @@ impl<D> ClipTileCopyVertexArrayD3D9<D> where D: Device {
             divisor: 0,
             buffer_index: 0,
         });
-        device.bind_buffer(&vertex_array, &vertex_buffer, BufferTarget::Vertex);
+        device.bind_buffer(&vertex_array, vertex_buffer, BufferTarget::Vertex);
         device.configure_vertex_attr(&vertex_array, &tile_index_attr, &VertexAttrDescriptor {
             size: 1,
             class: VertexAttrClass::Int,
@@ -235,7 +235,7 @@ impl<D> ClipTileCombineVertexArrayD3D9<D> where D: Device {
             divisor: 0,
             buffer_index: 0,
         });
-        device.bind_buffer(&vertex_array, &vertex_buffer, BufferTarget::Vertex);
+        device.bind_buffer(&vertex_array, vertex_buffer, BufferTarget::Vertex);
         device.configure_vertex_attr(&vertex_array, &dest_tile_index_attr, &VertexAttrDescriptor {
             size: 1,
             class: VertexAttrClass::Int,

@@ -17,10 +17,8 @@ fn main() {
     assert!(rustc_version::version().unwrap().major >= 1);
 
     // Set cfg flags depending on release channel
-    match rustc_version::version_meta().unwrap().channel {
-        Channel::Nightly => {
-            println!("cargo:rustc-cfg=pf_rustc_nightly");
-        }
-        _ => {}
+    if rustc_version::version_meta().unwrap().channel ==
+        Channel::Nightly {
+        println!("cargo:rustc-cfg=pf_rustc_nightly");
     }
 }

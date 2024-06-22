@@ -131,11 +131,11 @@ impl RenderTransform {
         let clip_polygon = points.into_iter()
                                  .map(|point| (inverse_transform * point).to_2d())
                                  .collect();
-        return PreparedRenderTransform::Perspective {
+        PreparedRenderTransform::Perspective {
             perspective,
             clip_polygon,
             quad,
-        };
+        }
     }
 }
 
@@ -145,7 +145,7 @@ pub(crate) struct PreparedBuildOptions {
     pub(crate) subpixel_aa_enabled: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy)] #[allow(clippy::upper_case_acronyms)]
 pub(crate) enum PrepareMode {
     CPU,
     TransformCPUBinGPU,
@@ -195,9 +195,6 @@ pub(crate) enum PreparedRenderTransform {
 impl PreparedRenderTransform {
     #[inline]
     pub(crate) fn is_2d(&self) -> bool {
-        match *self {
-            PreparedRenderTransform::Transform2D(_) => true,
-            _ => false,
-        }
+        matches!(self, PreparedRenderTransform::Transform2D(_))
     }
 }

@@ -74,7 +74,7 @@ fn main() {
                 let mut canvas = Canvas::new(window_size.to_f32()).get_context_2d(font_context.clone());
 
                 // Draw the text.
-                canvas.set_font("Overpass-Regular");
+                let _ = canvas.set_font("Overpass-Regular");
                 canvas.set_font_size(32.0);
                 canvas.fill_text("Hello Pathfinder!", vec2f(32.0, 48.0));
                 canvas.set_text_align(TextAlign::Right);

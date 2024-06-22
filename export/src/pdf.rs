@@ -211,7 +211,7 @@ impl Pdf {
         // Write out each object
         for (idx, obj) in self.objects.iter_mut().enumerate().skip(2) {
             obj.offset = Some(out.pos());
-            write!(out, "{} 0 obj\n", idx+1)?;
+            writeln!(out, "{} 0 obj", idx+1)?;
             out.write_all(&obj.contents)?;
             out.write_all(b"endobj\n")?;
         }
@@ -220,8 +220,8 @@ impl Pdf {
         self.objects[1].offset = Some(out.pos());
         out.write_all(b"2 0 obj\n")?;
         out.write_all(b"<< /Type /Pages\n")?;
-        write!(out,
-            "/Count {}\n",
+        writeln!(out,
+            "/Count {}",
             self.objects.iter().filter(|o| o.is_page).count()
         )?;
         out.write_all(b"/Kids [")?;
@@ -237,16 +237,16 @@ impl Pdf {
         // Write the cross-reference table
         let startxref = out.pos() + 1; // NOTE: apparently there's some 1-based indexing??
         out.write_all(b"xref\n")?;
-        write!(out, "0 {}\n", self.objects.len() + 1)?;
+        writeln!(out, "0 {}", self.objects.len() + 1)?;
         out.write_all(b"0000000000 65535 f \n")?;
 
         for obj in &self.objects {
-            write!(out, "{:010} 00000 f \n", obj.offset.unwrap())?;
+            writeln!(out, "{:010} 00000 f ", obj.offset.unwrap())?;
         }
 
         // Write the document trailer
         out.write_all(b"trailer\n")?;
-        write!(out, "<< /Size {}\n", self.objects.len())?;
+        writeln!(out, "<< /Size {}", self.objects.len())?;
         out.write_all(b"/Root 1 0 R >>\n")?;
 
         // Write the offset to the xref table

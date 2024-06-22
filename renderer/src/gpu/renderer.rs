@@ -39,9 +39,7 @@ use pathfinder_gpu::{TextureBinding, TextureDataRef, TextureFormat, UniformBindi
 use pathfinder_resources::ResourceLoader;
 use pathfinder_simd::default::{F32x2, F32x4, I32x2};
 use std::collections::VecDeque;
-use std::f32;
 use std::time::Duration;
-use std::u32;
 
 static QUAD_VERTEX_POSITIONS: [u16; 8] = [0, 0, 1, 0, 1, 1, 0, 1];
 static QUAD_VERTEX_INDICES: [u32; 6] = [0, 1, 3, 1, 2, 3];
@@ -50,6 +48,7 @@ pub(crate) const MASK_TILES_ACROSS: u32 = 256;
 pub(crate) const MASK_TILES_DOWN: u32 = 256;
 
 // 1.0 / sqrt(2*pi)
+#[allow(clippy::excessive_precision)]
 const SQRT_2_PI_INV: f32 = 0.3989422804014327;
 
 const TEXTURE_METADATA_ENTRIES_PER_ROW: i32 = 128;
@@ -646,7 +645,7 @@ impl<D> Renderer<D> where D: Device {
                 location: TextureLocation { page: TexturePageId(!0), rect: RectI::default() },
             });
         }
-        let mut render_target =
+        let render_target =
             &mut self.core.render_targets[render_target_id.render_target as usize];
         debug_assert_eq!(render_target.location.page, TexturePageId(!0));
         render_target.location = location;
@@ -736,7 +735,7 @@ impl<D> Renderer<D> where D: Device {
         // convex.)
         let mut indices: Vec<u32> = vec![];
         for index in 1..(quad_positions.len() as u32 - 1) {
-            indices.extend_from_slice(&[0, index as u32, index + 1]);
+            indices.extend_from_slice(&[0, index, index + 1]);
         }
         self.core.device.allocate_buffer(&self.frame.stencil_vertex_array.index_buffer,
                                     BufferData::Memory(&indices),
@@ -1011,7 +1010,7 @@ impl<D> RendererCore<D> where D: Device {
     }
 
     pub(crate) fn reallocate_alpha_tile_pages_if_necessary(&mut self, copy_existing: bool) {
-        let alpha_tile_pages_needed = ((self.alpha_tile_count + 0xffff) >> 16) as u32;
+        let alpha_tile_pages_needed = (self.alpha_tile_count + 0xffff) >> 16;
         if let Some(ref mask_storage) = self.mask_storage {
             if alpha_tile_pages_needed <= mask_storage.allocated_page_count {
                 return;
@@ -1129,7 +1128,7 @@ impl<D> RendererCore<D> where D: Device {
     // Pattern textures
 
     fn texture_page(&self, id: TexturePageId) -> &D::Texture {
-        self.device.framebuffer_texture(&self.texture_page_framebuffer(id))
+        self.device.framebuffer_texture(self.texture_page_framebuffer(id))
     }
 
     fn texture_page_framebuffer(&self, id: TexturePageId) -> &D::Framebuffer {
@@ -1248,7 +1247,7 @@ impl<D> RendererCore<D> where D: Device {
 
 impl<D> Frame<D> where D: Device {
     // FIXME(pcwalton): This signature shouldn't be so big. Make a struct.
-    fn new(device: &D,
+    #[allow(clippy::too_many_arguments)] fn new(device: &D,
            allocator: &mut GPUMemoryAllocator<D>,
            blit_program: &BlitProgram<D>,
            clear_program: &ClearProgram<D>,
@@ -1263,18 +1262,18 @@ impl<D> Frame<D> where D: Device {
             allocator.get_index_buffer(quad_vertex_indices_buffer_id);
 
         let blit_vertex_array = BlitVertexArray::new(device,
-                                                     &blit_program,
-                                                     &quad_vertex_positions_buffer,
-                                                     &quad_vertex_indices_buffer);
+                                                     blit_program,
+                                                     quad_vertex_positions_buffer,
+                                                     quad_vertex_indices_buffer);
         let clear_vertex_array = ClearVertexArray::new(device,
-                                                       &clear_program,
-                                                       &quad_vertex_positions_buffer,
-                                                       &quad_vertex_indices_buffer);
+                                                       clear_program,
+                                                       quad_vertex_positions_buffer,
+                                                       quad_vertex_indices_buffer);
         let reprojection_vertex_array = ReprojectionVertexArray::new(device,
-                                                                     &reprojection_program,
-                                                                     &quad_vertex_positions_buffer,
-                                                                     &quad_vertex_indices_buffer);
-        let stencil_vertex_array = StencilVertexArray::new(device, &stencil_program);
+                                                                     reprojection_program,
+                                                                     quad_vertex_positions_buffer,
+                                                                     quad_vertex_indices_buffer);
+        let stencil_vertex_array = StencilVertexArray::new(device, stencil_program);
 
         Frame {
             blit_vertex_array,

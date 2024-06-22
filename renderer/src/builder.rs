@@ -39,7 +39,6 @@ use pathfinder_simd::default::F32x4;
 use std::borrow::Cow;
 use std::ops::Range;
 use std::sync::atomic::AtomicUsize;
-use std::u32;
 
 pub(crate) const ALPHA_TILE_LEVEL_COUNT: usize = 2;
 pub(crate) const ALPHA_TILES_PER_LEVEL: usize = 1 << (32 - ALPHA_TILE_LEVEL_COUNT + 1);
@@ -60,7 +59,7 @@ pub(crate) struct SceneBuilder<'a, 'b, 'c, 'd> {
 pub(crate) struct ObjectBuilder {
     pub built_path: BuiltPath,
     pub fills: Vec<Fill>,
-    pub bounds: RectF,
+    #[allow(unused)] pub bounds: RectF,
 }
 
 // Derives `Clone` just so we can use `Cow`, not because we actually want to clone it.
@@ -71,8 +70,8 @@ struct BuiltDrawPath {
     blend_mode: BlendMode,
     filter: Filter,
     color_texture: Option<TileBatchTexture>,
-    sampling_flags_1: TextureSamplingFlags,
-    mask_0_fill_rule: FillRule,
+    #[allow(unused)] sampling_flags_1: TextureSamplingFlags,
+    #[allow(unused)] mask_0_fill_rule: FillRule,
     occludes: bool,
 }
 
@@ -99,13 +98,13 @@ impl BuiltDrawPath {
 pub(crate) struct BuiltPath {
     pub data: BuiltPathData,
     pub tile_bounds: RectI,
-    pub fill_rule: FillRule,
-    pub clip_path_id: Option<ClipPathId>,
+    #[allow(unused)] pub fill_rule: FillRule,
+    #[allow(unused)] pub clip_path_id: Option<ClipPathId>,
     pub ctrl_byte: u8,
     pub paint_id: PaintId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug)] #[allow(clippy::upper_case_acronyms)]
 pub(crate) enum BuiltPathData {
     CPU(BuiltPathBinCPUData),
     TransformCPUBinGPU(BuiltPathTransformCPUBinGPUData),
@@ -127,7 +126,7 @@ pub(crate) struct BuiltPathTransformCPUBinGPUData {
     pub outline: Outline,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug)] #[allow(unused)]
 pub(crate) struct Occluder {
     pub(crate) coords: Vector2I,
 }
@@ -198,7 +197,7 @@ impl<'a, 'b, 'c, 'd> SceneBuilder<'a, 'b, 'c, 'd> {
         };
 
         if scene_is_dirty {
-            let built_segments = BuiltSegments::from_scene(&self.scene);
+            let built_segments = BuiltSegments::from_scene(self.scene);
             self.sink.listener.send(RenderCommand::UploadSceneD3D11 {
                 draw_segments: built_segments.draw_segments,
                 clip_segments: built_segments.clip_segments,
@@ -232,8 +231,8 @@ impl<'a, 'b, 'c, 'd> SceneBuilder<'a, 'b, 'c, 'd> {
                 path_id: PathId(path_index as u32),
                 view_box: effective_view_box,
                 prepare_mode: *prepare_mode,
-                built_options: &self.built_options,
-                scene: &self.scene,
+                built_options: self.built_options,
+                scene: self.scene,
             })
         });
 
@@ -243,10 +242,10 @@ impl<'a, 'b, 'c, 'd> SceneBuilder<'a, 'b, 'c, 'd> {
                     path_id: PathId(path_index as u32),
                     view_box: effective_view_box,
                     prepare_mode: *prepare_mode,
-                    built_options: &self.built_options,
-                    scene: &self.scene,
+                    built_options: self.built_options,
+                    scene: self.scene,
                 },
-                paint_metadata: &paint_metadata,
+                paint_metadata,
                 built_clip_paths: &built_clip_paths,
             })
         });
@@ -300,7 +299,7 @@ impl<'a, 'b, 'c, 'd> SceneBuilder<'a, 'b, 'c, 'd> {
                                    view_box,
                                    &prepare_mode,
                                    path_object.clip_path(),
-                                   &built_clip_paths,
+                                   built_clip_paths,
                                    TilingPathInfo::Draw(DrawTilingPathInfo {
             paint_id,
             blend_mode: path_object.blend_mode(),
@@ -337,8 +336,8 @@ impl<'a, 'b, 'c, 'd> SceneBuilder<'a, 'b, 'c, 'd> {
                 }
                 DisplayItem::DrawPaths(ref path_id_range) => {
                     tile_batch_builder.build_tile_batches_for_draw_path_display_item(
-                        &self.scene,
-                        &self.sink,
+                        self.scene,
+                        self.sink,
                         self.built_options,
                         path_id_range.start..path_id_range.end,
                         paint_metadata,
@@ -348,7 +347,7 @@ impl<'a, 'b, 'c, 'd> SceneBuilder<'a, 'b, 'c, 'd> {
         }
 
         // Send commands.
-        tile_batch_builder.send_to(&self.sink);
+        tile_batch_builder.send_to(self.sink);
     }
 
     fn finish_building(&mut self,
@@ -674,7 +673,7 @@ impl TileBatchDataD3D11 {
                 self.prepare_info.backdrops.reserve(data.backdrops.len());
                 for (tile_x_offset, backdrop) in data.backdrops.iter().enumerate() {
                     self.prepare_info.backdrops.push(BackdropInfoD3D11 {
-                        initial_backdrop: *backdrop as i32,
+                        initial_backdrop: *backdrop,
                         tile_x_offset: tile_x_offset as i32,
                         path_index: batch_path_index,
                     });
@@ -798,7 +797,7 @@ impl SegmentsD3D11 {
     fn add_path(&mut self, outline: &Outline) -> Range<u32> {
         let first_segment_index = self.indices.len() as u32;
         for contour in outline.contours() {
-            let point_count = contour.len() as u32;
+            let point_count = contour.len();
             self.points.reserve(point_count as usize);
 
             for point_index in 0..point_count {
@@ -938,7 +937,7 @@ impl TileBatchBuilder {
                     TileBatchBuilderLevel::D3D11 { .. } => {
                         Some(DrawTileBatch::D3D11(DrawTileBatchD3D11 {
                             tile_batch_data: TileBatchDataD3D11::new(self.next_batch_id,
-                                                                     &prepare_mode,
+                                                                     prepare_mode,
                                                                      PathSource::Draw),
                             color_texture: draw_path.color_texture,
                         }))
@@ -1055,7 +1054,7 @@ impl TileBatchBuilder {
                                         path_bounds,
                                         effective_view_box,
                                         draw_path.fill_rule(),
-                                        &prepare_mode,
+                                        prepare_mode,
                                         draw_path.clip_path(),
                                         &TilingPathInfo::Draw(DrawTilingPathInfo {
                                             paint_id,
@@ -1123,7 +1122,7 @@ fn add_clip_path_to_batch(scene: &Scene,
                             TileBatchId(clip_batches_d3d11.prepare_batches.len() as u32);
                         clip_batches_d3d11.prepare_batches
                                           .push(TileBatchDataD3D11::new(clip_tile_batch_id,
-                                                                        &prepare_mode,
+                                                                        prepare_mode,
                                                                         PathSource::Clip));
                     }
                     let clip_path_batch_index =
@@ -1179,7 +1178,7 @@ fn prepare_clip_path_for_gpu_binning(scene: &Scene,
                                     path_bounds,
                                     effective_view_box,
                                     clip_path.fill_rule(),
-                                    &prepare_mode,
+                                    prepare_mode,
                                     clip_path.clip_path(),
                                     &TilingPathInfo::Clip);
 

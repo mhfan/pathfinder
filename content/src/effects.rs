@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(clippy::excessive_precision)]
+
 //! Special effects that can be applied to layers.
 
 use pathfinder_color::{ColorF, matrix::ColorMatrix};

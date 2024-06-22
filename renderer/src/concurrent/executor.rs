@@ -27,6 +27,6 @@ pub struct SequentialExecutor;
 impl Executor for SequentialExecutor {
     fn build_vector<T, F>(&self, length: usize, builder: F) -> Vec<T>
                           where T: Send, F: Fn(usize) -> T + Send + Sync {
-        (0..length).into_iter().map(builder).collect()
+        (0..length).map(builder).collect()
     }
 }

@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(clippy::missing_safety_doc)]
+
 //! C bindings to Pathfinder.
 
 use font_kit::handle::Handle;
-use gl;
 use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, FillStyle, LineJoin};
 use pathfinder_canvas::{Path2D, TextAlign, TextBaseline, TextMetrics};
 use pathfinder_color::{ColorF, ColorU};
@@ -249,7 +250,7 @@ pub unsafe extern "C" fn PFCanvasFontContextCreateWithFonts(fonts: *const FKHand
                                                             font_count: usize)
                                                             -> PFCanvasFontContextRef {
     let fonts = slice::from_raw_parts(fonts, font_count);
-    Box::into_raw(Box::new(CanvasFontContext::from_fonts(fonts.into_iter().map(|font| {
+    Box::into_raw(Box::new(CanvasFontContext::from_fonts(fonts.iter().map(|font| {
         (**font).clone()
     }))))
 }
@@ -755,7 +756,7 @@ pub unsafe extern "C" fn PFRenderTransformDestroy(transform: PFRenderTransformRe
 
 #[no_mangle]
 pub unsafe extern "C" fn PFBuildOptionsCreate() -> PFBuildOptionsRef {
-    Box::into_raw(Box::new(BuildOptions::default()))
+    Box::into_raw(Box::default())
 }
 
 #[no_mangle]
@@ -832,7 +833,7 @@ pub unsafe extern "C" fn PFSVGSceneCreateWithPath(path: *const c_char) -> PFSVGS
 /// Destroys the SVG and returns the scene.
 #[no_mangle]
 pub unsafe extern "C" fn PFSVGSceneIntoScene(svg: PFSVGSceneRef) -> PFSceneRef {
-    Box::into_raw(Box::new((*Box::from_raw(svg)).scene))
+    Box::into_raw(Box::new(Box::from_raw(svg).scene))
 }
 
 // Helpers for `canvas`

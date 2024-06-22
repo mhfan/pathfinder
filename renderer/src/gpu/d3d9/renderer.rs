@@ -36,7 +36,6 @@ use pathfinder_gpu::{RenderOptions, RenderState, RenderTarget, StencilFunc, Sten
 use pathfinder_gpu::{TextureDataRef, TextureFormat, UniformData};
 use pathfinder_resources::ResourceLoader;
 use pathfinder_simd::default::F32x2;
-use std::u32;
 
 const MAX_FILLS_PER_BATCH: usize = 0x10000;
 
@@ -124,9 +123,10 @@ impl<D> RendererD3D9<D> where D: Device {
         // TODO(pcwalton): Generate these with SIMD.
         let mut indices: Vec<u32> = Vec::with_capacity(length * 6);
         for index in 0..(length as u32) {
+            let index = index * 4;
             indices.extend_from_slice(&[
-                index * 4 + 0, index * 4 + 1, index * 4 + 2,
-                index * 4 + 1, index * 4 + 3, index * 4 + 2,
+                index,     index + 1, index + 2,
+                index + 1, index + 3, index + 2,
             ]);
         }
 
@@ -170,7 +170,7 @@ impl<D> RendererD3D9<D> where D: Device {
             self.draw_buffered_fills(core);
         }
 
-        self.buffered_fills.extend(self.pending_fills.drain(..));
+        self.buffered_fills.append(&mut self.pending_fills);
     }
 
     pub(crate) fn draw_buffered_fills(&mut self, core: &mut RendererCore<D>) {
@@ -193,7 +193,7 @@ impl<D> RendererD3D9<D> where D: Device {
                                                                   BufferTag("Fill"));
         let fill_vertex_buffer = core.allocator.get_general_buffer(fill_buffer_id);
         debug_assert!(buffered_fills.len() <= u32::MAX as usize);
-        core.device.upload_to_buffer(fill_vertex_buffer, 0, &buffered_fills, BufferTarget::Vertex);
+        core.device.upload_to_buffer(fill_vertex_buffer, 0, buffered_fills, BufferTarget::Vertex);
 
         let fill_count = buffered_fills.len() as u32;
         buffered_fills.clear();
@@ -282,7 +282,7 @@ impl<D> RendererD3D9<D> where D: Device {
         let mask_framebuffer_id = mask_storage.framebuffer_id;
         let mask_framebuffer = core.allocator.get_framebuffer(mask_framebuffer_id);
         let mask_texture = core.device.framebuffer_texture(mask_framebuffer);
-        let mask_texture_size = core.device.texture_size(&mask_texture);
+        let mask_texture_size = core.device.texture_size(mask_texture);
 
         let clip_vertex_buffer = core.allocator
                                      .get_general_buffer(clip_buffer_info.clip_buffer_id);
@@ -343,7 +343,7 @@ impl<D> RendererD3D9<D> where D: Device {
             primitive: Primitive::Triangles,
             textures: &[
                 (&self.programs.tile_clip_combine_program.src_texture,
-                 core.device.framebuffer_texture(&mask_temp_framebuffer)),
+                 core.device.framebuffer_texture(mask_temp_framebuffer)),
             ],
             images: &[],
             uniforms: &[
@@ -373,7 +373,7 @@ impl<D> RendererD3D9<D> where D: Device {
         let z_data: &[u8] = z_buffer_map.data.as_byte_slice();
         core.device.upload_to_texture(z_buffer_texture,
                                       z_buffer_map.rect,
-                                      TextureDataRef::U8(&z_data));
+                                      TextureDataRef::U8(z_data));
         z_buffer_texture_id
     }
 
@@ -489,7 +489,7 @@ impl<D> RendererD3D9<D> where D: Device {
             RenderTarget::Framebuffer(framebuffer) => framebuffer,
             RenderTarget::Default => panic!("Can't copy alpha tiles from default framebuffer!"),
         };
-        let draw_texture = core.device.framebuffer_texture(&draw_framebuffer);
+        let draw_texture = core.device.framebuffer_texture(draw_framebuffer);
 
         textures.push((&self.programs.tile_copy_program.src_texture, draw_texture));
         uniforms.push((&self.programs.tile_copy_program.framebuffer_size_uniform,
@@ -560,7 +560,7 @@ impl<D> RendererD3D9<D> where D: Device {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone)] #[allow(unused)]
 pub(crate) struct TileBatchInfoD3D9 {
     pub(crate) tile_count: u32,
     pub(crate) z_buffer_id: GeneralBufferID,

@@ -12,7 +12,6 @@ use arrayvec::ArrayVec;
 use euclid::default::Size2D;
 use font_kit::handle::Handle;
 use font_kit::sources::mem::MemSource;
-use image;
 use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, LineJoin, Path2D};
 use pathfinder_canvas::{TextAlign, TextBaseline, TextMetrics};
 use pathfinder_color::{ColorF, ColorU, rgbau, rgbf, rgbu};
@@ -49,9 +48,6 @@ use winit::platform::run_return::EventLoopExtRunReturn;
 use winit::{event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode}, window::WindowBuilder, event_loop::{EventLoop, ControlFlow}};
 
 #[cfg(not(windows))]
-use jemallocator;
-
-#[cfg(not(windows))]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
@@ -65,16 +61,16 @@ const GRAPH_WIDTH: f32 = 200.0;
 const GRAPH_HEIGHT: f32 = 35.0;
 const GRAPH_HISTORY_COUNT: usize = 100;
 
-static FONT_NAME_REGULAR: &'static str = "Roboto-Regular";
-static FONT_NAME_BOLD:    &'static str = "Roboto-Bold";
-static FONT_NAME_EMOJI:   &'static str = "NotoEmoji";
+static FONT_NAME_REGULAR: &str = "Roboto-Regular";
+static FONT_NAME_BOLD:    &str = "Roboto-Bold";
+static FONT_NAME_EMOJI:   &str = "NotoEmoji";
 
-static PARAGRAPH_TEXT: &'static str = "This is a longer chunk of text.
+static PARAGRAPH_TEXT: &str = "This is a longer chunk of text.
 
 I would have used lorem ipsum, but she was busy jumping over the lazy dog with the fox and all \
 the men who came to the aid of the party. 🎉";
 
-static HOVER_TEXT: &'static str = "Hover your mouse over the text to see the calculated caret \
+static HOVER_TEXT: &str = "Hover your mouse over the text to see the calculated caret \
 position.";
 
 fn render_demo(context: &mut CanvasRenderingContext2D,
@@ -251,7 +247,7 @@ fn draw_paragraph(context: &mut CanvasRenderingContext2D,
 
     context.save();
 
-    context.set_font(&[FONT_NAME_REGULAR, FONT_NAME_EMOJI][..]);
+    let _ = context.set_font(&[FONT_NAME_REGULAR, FONT_NAME_EMOJI][..]);
     context.set_font_size(18.0);
     context.set_fill_style(ColorU::white());
     context.set_text_align(TextAlign::Left);
@@ -520,7 +516,7 @@ impl Word {
             char_start_x = char_end_x;
             prev_char_index = char_index as u32;
         }
-        return self.string.len() as u32;
+        self.string.len() as u32
     }
 
     fn char_position(&self, context: &CanvasRenderingContext2D, char_index: u32) -> f32 {
@@ -857,7 +853,7 @@ fn draw_window(context: &mut CanvasRenderingContext2D,
     context.set_stroke_style(rgbau(0, 0, 0, 32));
     context.stroke_path(path);
 
-    context.set_font(FONT_NAME_BOLD);
+    let _ = context.set_font(FONT_NAME_BOLD);
     context.set_font_size(15.0);
     context.set_text_align(TextAlign::Center);
     context.set_text_baseline(TextBaseline::Middle);
@@ -891,13 +887,13 @@ fn draw_search_box(context: &mut CanvasRenderingContext2D,
     context.restore();
 
     context.set_font_size(rect.height() * 0.5);
-    context.set_font(FONT_NAME_EMOJI);
+    let _ = context.set_font(FONT_NAME_EMOJI);
     context.set_fill_style(rgbau(255, 255, 255, 64));
     context.set_text_align(TextAlign::Center);
     context.set_text_baseline(TextBaseline::Middle);
     context.fill_text("🔍", rect.origin() + Vector2F::splat(rect.height() * 0.55));
 
-    context.set_font(FONT_NAME_REGULAR);
+    let _ = context.set_font(FONT_NAME_REGULAR);
     context.set_font_size(17.0);
     context.set_fill_style(rgbau(255, 255, 255, 32));
     context.set_text_align(TextAlign::Left);
@@ -905,7 +901,7 @@ fn draw_search_box(context: &mut CanvasRenderingContext2D,
     context.fill_text(text, rect.origin() + vec2f(1.05, 0.5) * rect.height());
 
     context.set_font_size(rect.height() * 0.5);
-    context.set_font(FONT_NAME_EMOJI);
+    let _ = context.set_font(FONT_NAME_EMOJI);
     context.set_text_align(TextAlign::Center);
     context.fill_text("️❌", rect.upper_right() + vec2f(-1.0, 1.0) * (rect.height() * 0.55));
 }
@@ -923,7 +919,7 @@ fn draw_dropdown(context: &mut CanvasRenderingContext2D, text: &str, rect: RectF
     context.set_stroke_style(rgbau(0, 0, 0, 48));
     context.stroke_path(create_rounded_rect_path(rect.contract(0.5), CORNER_RADIUS - 0.5));
 
-    context.set_font(FONT_NAME_REGULAR);
+    let _ = context.set_font(FONT_NAME_REGULAR);
     context.set_font_size(17.0);
     context.set_fill_style(rgbau(255, 255, 255, 160));
     context.set_text_align(TextAlign::Left);
@@ -949,7 +945,7 @@ fn draw_dropdown(context: &mut CanvasRenderingContext2D, text: &str, rect: RectF
 }
 
 fn draw_label(context: &mut CanvasRenderingContext2D, text: &str, rect: RectF) {
-    context.set_font(FONT_NAME_REGULAR);
+    let _ = context.set_font(FONT_NAME_REGULAR);
     context.set_font_size(15.0);
     context.set_fill_style(rgbau(255, 255, 255, 128));
     context.set_text_align(TextAlign::Left);
@@ -983,7 +979,7 @@ fn draw_text_edit_box(context: &mut CanvasRenderingContext2D,
                       hidpi_factor: f32) {
     draw_edit_box(context, rect, hidpi_factor);
 
-    context.set_font(FONT_NAME_REGULAR);
+    let _ = context.set_font(FONT_NAME_REGULAR);
     context.set_font_size(17.0);
     context.set_fill_style(rgbau(255, 255, 255, 64));
     context.set_text_align(TextAlign::Left);
@@ -998,7 +994,7 @@ fn draw_numeric_edit_box(context: &mut CanvasRenderingContext2D,
                          hidpi_factor: f32) {
     draw_edit_box(context, rect, hidpi_factor);
 
-    context.set_font(FONT_NAME_REGULAR);
+    let _ = context.set_font(FONT_NAME_REGULAR);
     context.set_font_size(15.0);
     let unit_width = context.measure_text(unit).width();
 
@@ -1021,7 +1017,7 @@ fn draw_check_box(context: &mut CanvasRenderingContext2D,
                   hidpi_factor: f32) {
     const CORNER_RADIUS: f32 = 3.0;
 
-    context.set_font(FONT_NAME_REGULAR);
+    let _ = context.set_font(FONT_NAME_REGULAR);
     context.set_font_size(15.0);
     context.set_fill_style(rgbau(255, 255, 255, 160));
     context.set_text_align(TextAlign::Left);
@@ -1044,7 +1040,7 @@ fn draw_check_box(context: &mut CanvasRenderingContext2D,
     context.stroke_path(shadow_path);
     context.restore();
 
-    context.set_font(FONT_NAME_EMOJI);
+    let _ = context.set_font(FONT_NAME_EMOJI);
     context.set_font_size(17.0);
     context.set_fill_style(rgbau(255, 255, 255, 128));
     context.set_text_align(TextAlign::Center);
@@ -1073,7 +1069,7 @@ fn draw_button(context: &mut CanvasRenderingContext2D,
     context.set_stroke_style(rgbau(0, 0, 0, 48));
     context.stroke_path(create_rounded_rect_path(rect.contract(0.5), CORNER_RADIUS - 0.5));
 
-    context.set_font(FONT_NAME_BOLD);
+    let _ = context.set_font(FONT_NAME_BOLD);
     context.set_font_size(17.0);
     let text_width = context.measure_text(text).width();
 
@@ -1082,7 +1078,7 @@ fn draw_button(context: &mut CanvasRenderingContext2D,
         None => icon_width = 0.0,
         Some(icon) => {
             context.set_font_size(rect.height() * 0.7);
-            context.set_font(FONT_NAME_EMOJI);
+            let _ = context.set_font(FONT_NAME_EMOJI);
             icon_width = context.measure_text(icon).width() + rect.height() * 0.15;
             context.set_fill_style(rgbau(255, 255, 255, 96));
             context.set_text_align(TextAlign::Left);
@@ -1092,7 +1088,7 @@ fn draw_button(context: &mut CanvasRenderingContext2D,
         }
     }
 
-    context.set_font(FONT_NAME_BOLD);
+    let _ = context.set_font(FONT_NAME_BOLD);
     context.set_font_size(17.0);
     let text_origin = rect.center() + vec2f(icon_width * 0.25 - text_width * 0.5, 0.0);
     context.set_text_align(TextAlign::Left);
@@ -1347,7 +1343,7 @@ impl PerfGraph {
         context.set_fill_style(rgbau(255, 192, 0, 128));
         context.fill_path(path, FillRule::Winding);
 
-        context.set_font(FONT_NAME_REGULAR);
+        let _ = context.set_font(FONT_NAME_REGULAR);
         context.set_text_baseline(TextBaseline::Top);
 
         if !self.name.is_empty() {
@@ -1390,7 +1386,7 @@ impl PerfGraph {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)] #[allow(clippy::upper_case_acronyms)]
 enum GraphStyle {
     FPS,
     MS,
@@ -1459,7 +1455,7 @@ struct DemoData {
 impl DemoData {
     fn load(resources: &dyn ResourceLoader) -> DemoData {
         let data = resources.slurp("textures/example-nanovg.png").unwrap();
-        let image = image::load_from_memory(&data).unwrap().to_rgba();
+        let image = image::load_from_memory(&data).unwrap().to_rgba8();
         let image = Image::from_image_buffer(image);
         DemoData { image }
     }
@@ -1581,7 +1577,7 @@ fn main() {
 
         // Present the rendered canvas via `surfman`.
         let mut surface = device.unbind_surface_from_context(&mut gl_context).unwrap().unwrap();
-        device.present_surface(&mut gl_context, &mut surface).unwrap();
+        device.present_surface(&gl_context, &mut surface).unwrap();
         device.bind_surface_to_context(&mut gl_context, surface).unwrap();
 
         // Add stats to performance graphs.

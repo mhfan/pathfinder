@@ -45,14 +45,14 @@ const LIGHT_BG_COLOR:       ColorU = ColorU { r: 248, g: 248, b: 248, a: 255, };
 const DARK_BG_COLOR:        ColorU = ColorU { r: 32,  g: 32,  b: 32,  a: 255, };
 const TRANSPARENT_BG_COLOR: ColorU = ColorU { r: 0,   g: 0,   b: 0,   a: 0,   };
 
-static EFFECTS_PNG_NAME: &'static str = "demo-effects";
-static OPEN_PNG_NAME: &'static str = "demo-open";
-static ROTATE_PNG_NAME: &'static str = "demo-rotate";
-static ZOOM_IN_PNG_NAME: &'static str = "demo-zoom-in";
-static ZOOM_ACTUAL_SIZE_PNG_NAME: &'static str = "demo-zoom-actual-size";
-static ZOOM_OUT_PNG_NAME: &'static str = "demo-zoom-out";
-static BACKGROUND_PNG_NAME: &'static str = "demo-background";
-static SCREENSHOT_PNG_NAME: &'static str = "demo-screenshot";
+static EFFECTS_PNG_NAME: &str = "demo-effects";
+static OPEN_PNG_NAME: &str = "demo-open";
+static ROTATE_PNG_NAME: &str = "demo-rotate";
+static ZOOM_IN_PNG_NAME: &str = "demo-zoom-in";
+static ZOOM_ACTUAL_SIZE_PNG_NAME: &str = "demo-zoom-actual-size";
+static ZOOM_OUT_PNG_NAME: &str = "demo-zoom-out";
+static BACKGROUND_PNG_NAME: &str = "demo-background";
+static SCREENSHOT_PNG_NAME: &str = "demo-screenshot";
 
 pub struct DemoUIModel {
     pub mode: Mode,
@@ -538,6 +538,7 @@ impl<D> DemoUIPresenter<D> where D: Device {
                           .draw_solid_rect(device, allocator, slider_knob_rect, TEXT_COLOR);
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_screenshot_menu_item<W>(&mut self,
                                     device: &D,
                                     allocator: &mut GPUMemoryAllocator<D>,
@@ -569,6 +570,7 @@ impl<D> DemoUIPresenter<D> where D: Device {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_background_menu_item(&mut self,
                                  device: &D,
                                  allocator: &mut GPUMemoryAllocator<D>,
@@ -619,6 +621,7 @@ impl<D> DemoUIPresenter<D> where D: Device {
                           .is_some()
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_effects_switch(&self,
                            device: &D,
                            allocator: &mut GPUMemoryAllocator<D>,
@@ -671,7 +674,7 @@ pub struct ScreenshotInfo {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ScreenshotType {
+#[allow(clippy::upper_case_acronyms)] pub enum ScreenshotType {
     PNG = 0,
     SVG = 1,
 }

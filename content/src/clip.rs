@@ -37,7 +37,7 @@ impl TEdge for Edge {
     fn intersect_line_segment(&self, segment: LineSegment2F) -> ArrayVec<[f32; 3]> {
         let mut results = ArrayVec::new();
         if let Some(t) = segment.intersection_t(self.0) {
-            if t >= 0.0 && t <= 1.0 {
+            if (0.0..=1.0).contains(&t) {
                 results.push(t);
             }
         }
@@ -64,10 +64,8 @@ trait TEdge: Debug {
             if from_inside != self.point_is_inside(segment.ctrl.from()) {
                 return EdgeRelativeLocation::Intersecting;
             }
-            if !segment.is_quadratic() {
-                if from_inside != self.point_is_inside(segment.ctrl.to()) {
-                    return EdgeRelativeLocation::Intersecting;
-                }
+            if !segment.is_quadratic() && from_inside != self.point_is_inside(segment.ctrl.to()) {
+                return EdgeRelativeLocation::Intersecting;
             }
         }
         if from_inside {
@@ -291,7 +289,7 @@ impl ContourPolygonClipper {
     pub(crate) fn clip(mut self) -> Contour {
         // TODO(pcwalton): Maybe have a coarse circumscribed rect and use that for clipping?
 
-        let clip_polygon = mem::replace(&mut self.clip_polygon, SmallVec::default());
+        let clip_polygon = mem::take(&mut self.clip_polygon);
         let mut prev = match clip_polygon.last() {
             None => return Contour::new(),
             Some(prev) => *prev,
@@ -354,7 +352,7 @@ impl PolygonClipper3D {
     }
 
     fn clip_against(&mut self, edge: Edge3D) {
-        let input = mem::replace(&mut self.subject, vec![]);
+        let input = mem::take(&mut self.subject);
         let mut prev = match input.last() {
             None => return,
             Some(point) => *point,

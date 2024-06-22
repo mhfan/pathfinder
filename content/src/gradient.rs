@@ -20,7 +20,6 @@ use pathfinder_simd::default::F32x2;
 use std::cmp::Ordering;
 use std::convert;
 use std::hash::{Hash, Hasher};
-use std::mem;
 
 /// A gradient, either linear or radial.
 #[derive(Clone, PartialEq, Debug)]
@@ -110,11 +109,8 @@ impl Eq for ColorStop {}
 
 impl Hash for ColorStop {
     fn hash<H>(&self, state: &mut H) where H: Hasher {
-        unsafe {
-            self.color.hash(state);
-            let offset = mem::transmute::<f32, u32>(self.offset);
-            offset.hash(state);
-        }
+        self.color.hash(state);
+        self.offset.to_bits().hash(state);
     }
 }
 
@@ -292,7 +288,7 @@ mod test {
     fn never_sample_zero_width() {
         let mut grad = Gradient::linear_from_points(Vector2F::default(), Vector2F::default());
         for i in 0..110 {
-            let zero_width = (i == 0) || (11 <= i && i < 99) || (i == 109);
+            let zero_width = (i == 0) || (11..99).contains(&i) || (i == 109);
             grad.add_color_stop(ColorU::new(if zero_width { 255 } else { 0 }, 0, 0, 1), (i % 11) as f32 / 10.0);
         }
 

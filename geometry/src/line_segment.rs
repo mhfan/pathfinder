@@ -89,7 +89,7 @@ impl LineSegment2F {
 
     #[inline]
     pub fn split(self, t: f32) -> (LineSegment2F, LineSegment2F) {
-        debug_assert!(t >= 0.0 && t <= 1.0);
+        debug_assert!((0.0..=1.0).contains(&t));
         let (from_from, to_to) = (self.0.xyxy(), self.0.zwzw());
         let d_d = to_to - from_from;
         let mid_mid = from_from + d_d * F32x4::splat(t);

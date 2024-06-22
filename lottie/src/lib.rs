@@ -196,7 +196,7 @@ pub enum MultidimensionalPropertyValue {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "ty")]
+#[serde(tag = "ty")] #[allow(clippy::large_enum_variant)]
 pub enum Shape {
     #[serde(rename = "gr")]
     Group {

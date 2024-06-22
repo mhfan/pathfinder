@@ -105,12 +105,12 @@ impl<D> DebugUIPresenter<D> where D: Device {
         self.ui_presenter.draw_text(device,
                                     allocator,
                                     &format!("{} ({} level)", self.backend_name, level),
-                                    origin + vec2i(0, LINE_HEIGHT * 0),
+                                    origin,
                                     false);
         self.ui_presenter.draw_text(device,
                                     allocator,
                                     &self.device_name,
-                                    origin + vec2i(0, LINE_HEIGHT * 1),
+                                    origin + vec2i(0, LINE_HEIGHT),
                                     false);
 
     }
@@ -154,7 +154,7 @@ impl<D> DebugUIPresenter<D> where D: Device {
             device,
             allocator,
             &format!("Tiles: {}", mean_cpu_sample.total_tile_count),
-            origin + vec2i(0, LINE_HEIGHT * 1),
+            origin + vec2i(0, LINE_HEIGHT),
             false,
         );
         self.ui_presenter.draw_text(

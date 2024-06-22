@@ -97,7 +97,7 @@ impl SVGScene {
                     clip_outline: &mut Option<Outline>) {
         let mut state = (*state).clone();
         let node_transform = usvg_transform_to_transform_2d(&node.transform());
-        state.transform = state.transform * node_transform;
+        state.transform *= node_transform;
         match *node.borrow() {
             NodeKind::Group(ref group) => {
                 if group.filter.is_some() {
@@ -309,7 +309,7 @@ impl Display for BuildResultFlags {
         return Ok(());
 
         // Must match the order in `BuildResultFlags`.
-        static NAMES: &'static [&'static str] = &[
+        static NAMES: &[&str] = &[
             "<filter>",
             "<image>",
             "<mask>",
@@ -344,7 +344,7 @@ impl PaintExt for Paint {
             UsvgPaint::Color(color) => paint = Paint::from_color(ColorU::from_svg_color(color)),
             UsvgPaint::Link(ref id) => {
                 match gradients.get(id) {
-                    Some(ref gradient_info) => {
+                    Some(gradient_info) => {
                         paint = Paint::from_gradient(gradient_info.gradient.clone());
                         paint.apply_transform(&(*transform * gradient_info.transform));
                     }

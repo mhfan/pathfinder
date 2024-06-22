@@ -36,8 +36,8 @@ impl LuminanceColorSpace {
         }
     }
 
-    pub fn to_luma(&self, luminance: f32) -> f32 {
-        match *self {
+    pub fn to_luma(self, luminance: f32) -> f32 {
+        match self {
             LuminanceColorSpace::Linear => luminance,
             LuminanceColorSpace::Gamma(gamma) => luminance.powf(gamma),
             LuminanceColorSpace::Srgb => {
@@ -52,8 +52,9 @@ impl LuminanceColorSpace {
         }
     }
 
-    pub fn from_luma(&self, luma: f32) -> f32 {
-        match *self {
+    #[allow(clippy::wrong_self_convention)]
+    pub fn from_luma(self, luma: f32) -> f32 {
+        match self {
             LuminanceColorSpace::Linear => luma,
             LuminanceColorSpace::Gamma(gamma) => luma.powf(1. / gamma),
             LuminanceColorSpace::Srgb => {
@@ -72,7 +73,7 @@ impl LuminanceColorSpace {
 //TODO: tests
 fn round_to_u8(x : f32) -> u8 {
     let v = (x + 0.5).floor() as i32;
-    assert!(0 <= v && v < 0x100);
+    assert!((0..0x100).contains(&v));
     v as u8
 }
 
@@ -313,7 +314,7 @@ mod tests {
     }
 
     fn overf(dst: f32, src: f32, alpha: f32) -> f32 {
-        ((src * alpha + dst * (255. - alpha))/255.) as f32
+        (src * alpha + dst * (255. - alpha)) / 255.
     }
 
 

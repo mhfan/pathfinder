@@ -189,9 +189,9 @@ impl WebGlDevice {
         self.context.use_program(Some(&render_state.program.gl_program));
         self.context.bind_vertex_array(Some(&render_state.vertex_array.gl_vertex_array));
 
-        self.bind_textures_and_images(&render_state.program,
-                                      &render_state.textures,
-                                      &render_state.images);
+        self.bind_textures_and_images(render_state.program,
+                                      render_state.textures,
+                                      render_state.images);
 
         for (uniform, data) in render_state.uniforms {
             self.set_uniform(uniform, data);
@@ -262,7 +262,7 @@ impl WebGlDevice {
             Some(ref state) => {
                 self.context.depth_func(state.func.to_gl_depth_func());
                 self.ck();
-                self.context.depth_mask(state.write as bool);
+                self.context.depth_mask(state.write);
                 self.ck();
                 self.context.enable(WebGl::DEPTH_TEST);
                 self.ck();
@@ -297,7 +297,7 @@ impl WebGlDevice {
         }
 
         // Set color mask.
-        let color_mask = render_options.color_mask as bool;
+        let color_mask = render_options.color_mask;
         self.context
             .color_mask(color_mask, color_mask, color_mask, color_mask);
         self.ck();
@@ -364,7 +364,7 @@ impl WebGlDevice {
             if index > pos {
                 output.push_str(&source[pos..index]);
             }
-            let end_index = index + 2 + source[index + 2..].find("}").unwrap();
+            let end_index = index + 2 + source[index + 2..].find('}').unwrap();
             assert_eq!(&source[end_index + 1..end_index + 2], "}");
             let ident = &source[index + 2..end_index];
             if ident == "version" {
@@ -383,7 +383,7 @@ fn slice_to_u8<T>(slice: &[T]) -> &[u8] {
     unsafe {
         std::slice::from_raw_parts(
             slice.as_ptr() as *const u8,
-            slice.len() * mem::size_of::<T>(),
+            mem::size_of_val(slice),
         )
     }
 }
@@ -624,7 +624,7 @@ impl Device for WebGlDevice {
         let name = format!("u{}", name);
         let location = self.context.get_uniform_location(&program.gl_program, &name);
         self.ck();
-        WebGlUniform { location: location }
+        WebGlUniform { location }
     }
 
     fn get_texture_parameter(&self, program: &WebGlProgram, name: &str) -> WebGlTextureParameter {
@@ -868,10 +868,10 @@ impl Device for WebGlDevice {
                 .unwrap();
         }
 
-        self.set_texture_sampling_mode(&texture, TextureSamplingFlags::empty());
+        self.set_texture_sampling_mode(texture, TextureSamplingFlags::empty());
     }
 
-    fn read_pixels(&self, _render_target: &RenderTarget<WebGlDevice>, _viewport: RectI) -> () {
+    fn read_pixels(&self, _render_target: &RenderTarget<WebGlDevice>, _viewport: RectI) {
         panic!("read_pixels is not supported");
     }
 
@@ -1051,7 +1051,7 @@ pub struct WebGlUniform {
 
 #[derive(Debug)]
 pub struct WebGlTextureParameter {
-    uniform: WebGlUniform,
+    #[allow(unused)] uniform: WebGlUniform,
     texture_unit: u32,
 }
 

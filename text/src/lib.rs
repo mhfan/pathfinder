@@ -72,12 +72,12 @@ enum FontInfoRefMut<'a, F> where F: Loader {
 pub struct GlyphId(pub u32);
 
 impl<F> FontContext<F> where F: Loader {
-    #[inline]
+    #[inline] #[allow(clippy::new_without_default)]
     pub fn new() -> FontContext<F> {
         FontContext { font_info: HashMap::new() }
     }
 
-    fn push_glyph(&mut self,
+    #[allow(clippy::too_many_arguments)] fn push_glyph(&mut self,
                   scene: &mut Scene,
                   font: &F,
                   font_key: Option<&str>,
@@ -89,10 +89,10 @@ impl<F> FontContext<F> where F: Loader {
         // Insert the font into the cache if needed.
         let mut font_info = match font_key {
             Some(font_key) => {
-                if !self.font_info.contains_key(&*font_key) {
+                if !self.font_info.contains_key(font_key) {
                     self.font_info.insert(font_key.to_owned(), FontInfo::new((*font).clone()));
                 }
-                FontInfoRefMut::Ref(self.font_info.get_mut(&*font_key).unwrap())
+                FontInfoRefMut::Ref(self.font_info.get_mut(font_key).unwrap())
             }
             None => {
                 // FIXME(pcwalton): This slow path can be removed once we have a unique font ID in
@@ -108,7 +108,7 @@ impl<F> FontContext<F> where F: Loader {
         let mut cached_outline = None;
         let can_cache_outline = render_options.hinting_options == HintingOptions::None;
         if can_cache_outline {
-            if let Some(ref outline) = font_info.outline_cache.get(&glyph_id) {
+            if let Some(outline) = font_info.outline_cache.get(&glyph_id) {
                 cached_outline = Some((*outline).clone());
             }
         }
@@ -185,11 +185,11 @@ impl FontContext<DefaultLoader> {
             let cached_font_key = cached_font_key.as_ref().unwrap();
             self.push_glyph(scene,
                             &*cached_font_key.font,
-                            cached_font_key.key.as_ref().map(|key| &**key),
+                            cached_font_key.key.as_deref(),
                             GlyphId(glyph.glyph_id),
                             glyph.offset,
                             style.size,
-                            &render_options)?;
+                            render_options)?;
         }
         Ok(())
     }
@@ -221,9 +221,9 @@ impl<F> FontInfo<F> where F: Loader {
 
 impl<'a, F> FontInfoRefMut<'a, F> where F: Loader {
     fn get_mut(&mut self) -> &mut FontInfo<F> {
-        match *self {
-            FontInfoRefMut::Ref(ref mut reference) => &mut **reference,
-            FontInfoRefMut::Owned(ref mut info) => info,
+        match self {
+            FontInfoRefMut::Ref(reference) => reference,
+            FontInfoRefMut::Owned(info) => info,
         }
     }
 }

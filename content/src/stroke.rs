@@ -122,7 +122,7 @@ impl<'a> OutlineStrokeToFill<'a> {
         new_contours.iter().for_each(|contour| contour.update_bounds(&mut new_bounds));
 
         self.output.contours = new_contours;
-        self.output.bounds = new_bounds.unwrap_or_else(|| RectF::default());
+        self.output.bounds = new_bounds.unwrap_or_else(RectF::default);
     }
 
     /// Returns the resulting stroked outline. This should be called after `offset()`.
