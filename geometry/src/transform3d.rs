@@ -41,7 +41,7 @@ impl Default for Transform4F {
 }
 
 impl Transform4F {
-    #[inline]
+    #[inline] #[allow(clippy::too_many_arguments)]
     pub fn row_major(
         m00: f32,
         m01: f32,
@@ -212,12 +212,12 @@ impl Transform4F {
 
         // TODO(pcwalton): Use SIMD. This needs a matrix transpose:
         // https://fgiesen.wordpress.com/2013/07/09/simd-transposes-1/
-        let transform = Transform4F::row_major(s.x(),       s.y(),       s.z(),       0.0,
-                                               u.x(),       u.y(),       u.z(),       0.0,
-                                               minus_f.x(), minus_f.y(), minus_f.z(), 0.0,
-                                               0.0,         0.0,         0.0,         1.0) *
-                        Transform4F::from_translation((-eye).to_4d());
-        transform
+
+        Transform4F::row_major(s.x(),   s.y(),       s.z(),       0.0,
+                                        u.x(),       u.y(),       u.z(),       0.0,
+                                        minus_f.x(), minus_f.y(), minus_f.z(), 0.0,
+                                        0.0,         0.0,         0.0,         1.0) *
+                                        Transform4F::from_translation((-eye).to_4d())
     }
 
     //     +-     -+
@@ -468,7 +468,7 @@ mod test {
         assert_eq!(a * p, q);
     }
 
-    #[test]
+    #[test] #[allow(clippy::excessive_precision)]
     fn test_inverse() {
         // Random matrix.
         let m = Transform4F::row_major(

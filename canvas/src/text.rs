@@ -79,7 +79,7 @@ impl CanvasRenderingContext2D {
         let transform = self.current_state.transform * Transform2F::from_translation(position);
 
         // TODO(pcwalton): Report errors.
-        drop(self.canvas_font_context
+        let _ = self.canvas_font_context
                  .0
                  .borrow_mut()
                  .font_context
@@ -93,7 +93,7 @@ impl CanvasRenderingContext2D {
                                   clip_path,
                                   blend_mode,
                                   paint_id,
-                              }));
+                              });
     }
 
     // Text styles
@@ -413,7 +413,7 @@ impl TextMetrics {
 
     pub fn actual_bounding_box_left(&self) -> f32 {
         if self.actual_left_extent.get().is_none() {
-            match self.skribo_layout.glyphs.get(0) {
+            match self.skribo_layout.glyphs.first() {
                 None => self.actual_left_extent.set(Some(0.0)),
                 Some(first_glyph) => {
                     let glyph_id = first_glyph.glyph_id;
@@ -489,7 +489,7 @@ impl VerticalMetrics {
         let mut last_font: Option<Arc<Font>> = None;
         for glyph in &skribo_layout.glyphs {
             match last_font {
-                Some(ref last_font) if Arc::ptr_eq(&last_font, &glyph.font.font) => {}
+                Some(ref last_font) if Arc::ptr_eq(last_font, &glyph.font.font) => {}
                 _ => {
                     let font = glyph.font.font.clone();
 
@@ -564,7 +564,7 @@ impl IntoFontCollection for Vec<FontFamily> {
 impl IntoFontCollection for Font {
     #[inline]
     fn into_font_collection(self, context: &CanvasFontContext) -> Result<Arc<FontCollection>, FontError> {
-        Ok(FontFamily::new_from_font(self).into_font_collection(context)?)
+        FontFamily::new_from_font(self).into_font_collection(context)
     }
 }
 

@@ -49,7 +49,7 @@ fn main() {
 
     // Create a Pathfinder renderer.
     let device = unsafe {
-        MetalDevice::new(metal_device, drawable.clone())
+        MetalDevice::new(metal_device, drawable)
     };
     let mode = RendererMode::default_for_device(&device);
     let options = RendererOptions {

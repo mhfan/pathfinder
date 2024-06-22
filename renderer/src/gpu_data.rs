@@ -27,7 +27,6 @@ use std::fmt::{Debug, Formatter, Result as DebugResult};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
-use std::u32;
 
 pub const TILE_CTRL_MASK_WINDING:  i32 = 0x1;
 pub const TILE_CTRL_MASK_EVEN_ODD: i32 = 0x2;
@@ -355,7 +354,7 @@ pub struct Fill {
 }
 
 #[derive(Clone, Copy, Debug)]
-#[repr(C)]
+#[repr(C)] #[allow(unused)]
 pub struct ClipMetadata {
     pub draw_tile_rect: RectI,
     pub clip_tile_rect: RectI,
@@ -387,7 +386,7 @@ impl Default for Clip {
 }
 
 #[derive(Clone, Copy, Debug)]
-#[repr(C)]
+#[repr(C)] #[allow(unused)]
 pub struct BinSegment {
     pub segment: LineSegment2F,
     pub path_index: PathId,

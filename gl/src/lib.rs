@@ -82,9 +82,9 @@ impl GLDevice {
         self.use_program(render_state.program);
         self.bind_vertex_array(render_state.vertex_array);
 
-        self.bind_textures_and_images(&render_state.program,
-                                      &render_state.textures,
-                                      &render_state.images);
+        self.bind_textures_and_images(render_state.program,
+                                      render_state.textures,
+                                      render_state.images);
 
         for &(storage_buffer, buffer) in render_state.storage_buffers {
             self.set_storage_buffer(storage_buffer, buffer);
@@ -98,9 +98,9 @@ impl GLDevice {
     fn set_compute_state(&self, compute_state: &ComputeState<GLDevice>) {
         self.use_program(compute_state.program);
 
-        self.bind_textures_and_images(&compute_state.program,
-                                      &compute_state.textures,
-                                      &compute_state.images);
+        self.bind_textures_and_images(compute_state.program,
+                                      compute_state.textures,
+                                      compute_state.images);
 
         compute_state.uniforms.iter().for_each(|(uniform, data)| self.set_uniform(uniform, data));
 
@@ -632,7 +632,7 @@ impl Device for GLDevice {
                            data: &[T],
                            target: BufferTarget) {
         let target = target.to_gl_target();
-        let len = (data.len() * mem::size_of::<T>()) as GLsizeiptr;
+        let len = mem::size_of_val(data) as GLsizeiptr;
         unsafe {
             gl::BindBuffer(target, buffer.object.gl_buffer); ck();
             gl::BufferSubData(target,
@@ -648,14 +648,14 @@ impl Device for GLDevice {
     }
 
     #[inline]
-    fn destroy_framebuffer(&self, mut framebuffer: Self::Framebuffer) -> Self::Texture {
+    fn destroy_framebuffer(&self, framebuffer: Self::Framebuffer) -> Self::Texture {
         let texture = GLTexture {
             gl_texture: framebuffer.texture.gl_texture,
             size: framebuffer.texture.size,
             format: framebuffer.texture.format,
         };
         unsafe {
-            gl::DeleteFramebuffers(1, &mut framebuffer.gl_framebuffer); ck();
+            gl::DeleteFramebuffers(1, &framebuffer.gl_framebuffer); ck();
         }
         mem::forget(framebuffer);
         texture
@@ -746,7 +746,7 @@ impl Device for GLDevice {
         let (origin, size) = (viewport.origin(), viewport.size());
         let format = self.render_target_format(render_target);
         self.bind_render_target(render_target);
-        let byte_size = size.x() as usize * size.y() as usize * format.bytes_per_pixel() as usize;
+        let byte_size = size.x() as usize * size.y() as usize * format.bytes_per_pixel();
 
         unsafe {
             let mut gl_pixel_buffer = 0;
@@ -763,7 +763,7 @@ impl Device for GLDevice {
                            size.y() as GLsizei,
                            format.gl_format(),
                            format.gl_type(),
-                           0 as *mut GLvoid); ck();
+                           std::ptr::null_mut::<GLvoid>()); ck();
 
             let gl_sync = gl::FenceSync(gl::SYNC_GPU_COMMANDS_COMPLETE, 0);
 
@@ -1093,9 +1093,9 @@ impl GLDevice {
     }
 
     fn render_target_format(&self, render_target: &RenderTarget<GLDevice>) -> TextureFormat {
-        match *render_target {
+        match render_target {
             RenderTarget::Default => TextureFormat::RGBA8,
-            RenderTarget::Framebuffer(ref framebuffer) => {
+            RenderTarget::Framebuffer(framebuffer) => {
                 self.framebuffer_texture(framebuffer).format
             }
         }
@@ -1169,7 +1169,7 @@ impl Drop for GLVertexArray {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteVertexArrays(1, &mut self.gl_vertex_array); ck();
+            gl::DeleteVertexArrays(1, &self.gl_vertex_array); ck();
         }
     }
 }
@@ -1236,7 +1236,7 @@ pub struct GLFramebuffer {
 impl Drop for GLFramebuffer {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteFramebuffers(1, &mut self.gl_framebuffer); ck();
+            gl::DeleteFramebuffers(1, &self.gl_framebuffer); ck();
         }
     }
 }
@@ -1253,7 +1253,7 @@ pub struct GLBufferObject {
 impl Drop for GLBufferObject {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteBuffers(1, &mut self.gl_buffer); ck();
+            gl::DeleteBuffers(1, &self.gl_buffer); ck();
         }
     }
 }
@@ -1323,7 +1323,7 @@ pub struct GLTexture {
 impl Drop for GLTexture {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteTextures(1, &mut self.gl_texture); ck();
+            gl::DeleteTextures(1, &self.gl_texture); ck();
         }
     }
 }
@@ -1336,7 +1336,7 @@ impl Drop for GLTimerQuery {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteQueries(1, &mut self.gl_query); ck();
+            gl::DeleteQueries(1, &self.gl_query); ck();
         }
     }
 }
@@ -1532,7 +1532,7 @@ pub struct GLTextureDataReceiver {
 impl Drop for GLTextureDataReceiver {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteBuffers(1, &mut self.gl_pixel_buffer); ck();
+            gl::DeleteBuffers(1, &self.gl_pixel_buffer); ck();
             gl::DeleteSync(self.gl_sync); ck();
         }
     }
@@ -1551,8 +1551,8 @@ pub enum GLVersion {
 }
 
 impl GLVersion {
-    fn to_glsl_version_spec(&self) -> &'static str {
-        match *self {
+    fn to_glsl_version_spec(self) -> &'static str {
+        match self {
             GLVersion::GL3 => "330",
             GLVersion::GLES3 => "300 es",
             GLVersion::GL4 => "430",

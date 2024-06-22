@@ -177,7 +177,7 @@ impl<D> RendererD3D11<D> where D: Device {
         // some drivers (#373).
         let z_buffer = core.allocator.get_general_buffer(z_buffer_id);
         let indirect_draw_params = [6, 0, 0, 0, 0, microlines_storage.count, 0, 0];
-        core.device.upload_to_buffer::<u32>(&z_buffer,
+        core.device.upload_to_buffer::<u32>(z_buffer,
                                             0,
                                             &indirect_draw_params,
                                             BufferTarget::Storage);
@@ -327,7 +327,7 @@ impl<D> RendererD3D11<D> where D: Device {
                 (&dice_program.points_storage_buffer, points_buffer),
                 (&dice_program.input_indices_storage_buffer, point_indices_buffer),
                 (&dice_program.microlines_storage_buffer, microlines_buffer),
-                (&dice_program.dice_metadata_storage_buffer, &dice_metadata_storage_buffer),
+                (&dice_program.dice_metadata_storage_buffer, dice_metadata_storage_buffer),
             ],
         });
 
@@ -336,7 +336,7 @@ impl<D> RendererD3D11<D> where D: Device {
         core.current_timer.as_mut().unwrap().push_query(TimeCategory::Dice, timer_query);
 
         let indirect_compute_params_receiver =
-            core.device.read_buffer(&dice_indirect_draw_params_buffer,
+            core.device.read_buffer(dice_indirect_draw_params_buffer,
                                     BufferTarget::Storage,
                                     0..32);
         let indirect_compute_params = core.device.recv_buffer(&indirect_compute_params_receiver);
@@ -362,7 +362,7 @@ impl<D> RendererD3D11<D> where D: Device {
                   alpha_tiles_buffer_id: GeneralBufferID,
                   propagate_tiles_info: &PropagateTilesInfoD3D11) {
         let &FillBufferInfoD3D11 { fill_vertex_buffer_id } = fill_storage_info;
-        let &PropagateTilesInfoD3D11 { ref alpha_tile_range } = propagate_tiles_info;
+        let PropagateTilesInfoD3D11 { alpha_tile_range } = propagate_tiles_info;
 
         let fill_program = &self.programs.fill_program;
         let fill_vertex_buffer = core.allocator.get_general_buffer(fill_vertex_buffer_id);
@@ -383,8 +383,8 @@ impl<D> RendererD3D11<D> where D: Device {
         // This setup is an annoying workaround for the 64K limit of compute invocation in OpenGL.
         let alpha_tile_count = alpha_tile_range.end - alpha_tile_range.start;
         let dimensions = ComputeDimensions {
-            x: alpha_tile_count.min(1 << 15) as u32,
-            y: ((alpha_tile_count + (1 << 15) - 1) >> 15) as u32,
+            x: alpha_tile_count.min(1 << 15),
+            y: ((alpha_tile_count + (1 << 15) - 1) >> 15),
             z: 1,
         };
 
@@ -400,7 +400,7 @@ impl<D> RendererD3D11<D> where D: Device {
             storage_buffers: &[
                 (&fill_program.fills_storage_buffer, fill_vertex_buffer),
                 (&fill_program.tiles_storage_buffer, tiles_d3d11_buffer),
-                (&fill_program.alpha_tiles_storage_buffer, &alpha_tiles_buffer),
+                (&fill_program.alpha_tiles_storage_buffer, alpha_tiles_buffer),
             ],
         });
 
@@ -541,7 +541,7 @@ impl<D> RendererD3D11<D> where D: Device {
         });
     }
 
-    fn propagate_tiles(&mut self,
+    #[allow(clippy::too_many_arguments)] fn propagate_tiles(&mut self,
                        core: &mut RendererCore<D>,
                        column_count: u32,
                        tiles_d3d11_buffer_id: GeneralBufferID,
@@ -568,7 +568,7 @@ impl<D> RendererD3D11<D> where D: Device {
         // TODO(pcwalton): Initialize the first tiles buffer on GPU?
         let first_tile_map_storage_buffer = core.allocator
                                                 .get_general_buffer(first_tile_map_buffer_id);
-        core.device.upload_to_buffer::<FirstTileD3D11>(&first_tile_map_storage_buffer,
+        core.device.upload_to_buffer::<FirstTileD3D11>(first_tile_map_storage_buffer,
                                                        0,
                                                        &vec![FirstTileD3D11::default(); tile_area],
                                                        BufferTarget::Storage);
@@ -577,7 +577,7 @@ impl<D> RendererD3D11<D> where D: Device {
 
         let mut storage_buffers = vec![
             (&propagate_program.draw_metadata_storage_buffer, propagate_metadata_storage_buffer),
-            (&propagate_program.backdrops_storage_buffer, &backdrops_storage_buffer),
+            (&propagate_program.backdrops_storage_buffer, backdrops_storage_buffer),
             (&propagate_program.draw_tiles_storage_buffer, tiles_d3d11_buffer),
             (&propagate_program.z_buffer_storage_buffer, z_buffer),
             (&propagate_program.first_tile_map_storage_buffer, first_tile_map_storage_buffer),
@@ -632,7 +632,7 @@ impl<D> RendererD3D11<D> where D: Device {
         core.current_timer.as_mut().unwrap().push_query(TimeCategory::Other, timer_query);
 
         let fill_indirect_draw_params_receiver =
-            core.device.read_buffer(&z_buffer, BufferTarget::Storage, 0..32);
+            core.device.read_buffer(z_buffer, BufferTarget::Storage, 0..32);
         let fill_indirect_draw_params = core.device
                                             .recv_buffer(&fill_indirect_draw_params_receiver);
         let fill_indirect_draw_params: &[u32] = fill_indirect_draw_params.as_slice_of().unwrap();
@@ -730,7 +730,7 @@ impl<D> RendererD3D11<D> where D: Device {
 
         match core.draw_render_target() {
             RenderTarget::Default => panic!("Can't draw to the default framebuffer with compute!"),
-            RenderTarget::Framebuffer(ref framebuffer) => {
+            RenderTarget::Framebuffer(framebuffer) => {
                 let dest_texture = core.device.framebuffer_texture(framebuffer);
                 images.push((&tile_program.dest_image, dest_texture, ImageAccess::ReadWrite));
             }
@@ -799,7 +799,7 @@ impl<D> RendererD3D11<D> where D: Device {
 
 #[derive(Clone)]
 struct TileBatchInfoD3D11 {
-    tile_count: u32,
+    #[allow(unused)] tile_count: u32,
     z_buffer_id: GeneralBufferID,
     tiles_d3d11_buffer_id: GeneralBufferID,
     propagate_metadata_buffer_id: GeneralBufferID,

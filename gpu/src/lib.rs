@@ -155,13 +155,13 @@ pub trait Device: Sized {
                 let image = image.to_luma8();
                 let size = vec2i(image.width() as i32, image.height() as i32);
                 let rect = RectI::new(Vector2I::default(), size);
-                self.upload_to_texture(&texture, rect, TextureDataRef::U8(&image))
+                self.upload_to_texture(texture, rect, TextureDataRef::U8(&image))
             }
             TextureFormat::RGBA8 => {
                 let image = image.to_rgba8();
                 let size = vec2i(image.width() as i32, image.height() as i32);
                 let rect = RectI::new(Vector2I::default(), size);
-                self.upload_to_texture(&texture, rect, TextureDataRef::U8(&image))
+                self.upload_to_texture(texture, rect, TextureDataRef::U8(&image))
             }
             _ => unimplemented!(),
         }

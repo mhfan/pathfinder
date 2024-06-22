@@ -109,7 +109,7 @@ pub struct TextureTag(pub &'static str);
 pub struct FramebufferTag(pub &'static str);
 
 impl<D> GPUMemoryAllocator<D> where D: Device {
-    pub fn new() -> GPUMemoryAllocator<D> {
+    #[allow(clippy::new_without_default)] pub fn new() -> GPUMemoryAllocator<D> {
         GPUMemoryAllocator {
             general_buffers_in_use: FxHashMap::default(),
             index_buffers_in_use: FxHashMap::default(),

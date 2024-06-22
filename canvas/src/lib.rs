@@ -25,7 +25,7 @@ use pathfinder_content::gradient::Gradient;
 use pathfinder_content::outline::{Contour, Outline};
 use pathfinder_content::pattern::{Image, Pattern};
 use pathfinder_content::render_target::RenderTargetId;
-use pathfinder_content::stroke::{LineJoin as StrokeLineJoin};
+use pathfinder_content::stroke::LineJoin as StrokeLineJoin;
 use pathfinder_content::stroke::{OutlineStrokeToFill, StrokeStyle};
 use pathfinder_geometry::line_segment::LineSegment2F;
 use pathfinder_renderer::paint::{Paint, PaintCompositeOp};
@@ -254,7 +254,7 @@ impl CanvasRenderingContext2D {
         // Duplicate and concatenate if an odd number of dashes are present.
         if new_line_dash.len() % 2 == 1 {
             let mut real_line_dash = new_line_dash.clone();
-            real_line_dash.extend(new_line_dash.into_iter());
+            real_line_dash.extend(new_line_dash);
             new_line_dash = real_line_dash;
         }
 
@@ -682,7 +682,7 @@ impl State {
     fn resolve_paint<'a>(&self, paint: &'a Paint) -> Cow<'a, Paint> {
         let mut must_copy = !self.transform.is_identity() || self.global_alpha < 1.0;
         if !must_copy {
-            if let Some(ref pattern) = paint.pattern() {
+            if let Some(pattern) = paint.pattern() {
                 must_copy = self.image_smoothing_enabled != pattern.smoothing_enabled()
             }
         }
@@ -724,7 +724,7 @@ pub struct Path2D {
 }
 
 impl Path2D {
-    #[inline]
+    #[inline] #[allow(clippy::new_without_default)]
     pub fn new() -> Path2D {
         Path2D { outline: Outline::new(), current_contour: Contour::new() }
     }

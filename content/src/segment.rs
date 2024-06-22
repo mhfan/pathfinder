@@ -107,7 +107,7 @@ impl Segment {
         let (p0x, p0y) = (p3p0.z(), p3p0.w());
         let (p1x, p1y) = (4.0 - p0x, (1.0 - p0x) * (3.0 - p0x) / p0y);
         let p2p1 = F32x4::new(p1x, -p1y, p1x, p1y) * F32x4::splat(1.0 / 3.0);
-        return Segment::cubic(LineSegment2F(p3p0), LineSegment2F(p2p1));
+        Segment::cubic(LineSegment2F(p3p0), LineSegment2F(p2p1))
     }
 
     /// Returns a cubic Bézier segment that approximates a quarter of an arc, centered on the +x

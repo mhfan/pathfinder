@@ -42,9 +42,9 @@ impl TilingPathInfo {
         }
     }
 
-    pub(crate) fn to_ctrl(&self) -> u8 {
+    pub(crate) fn to_ctrl(self) -> u8 {
         let mut ctrl = 0;
-        match *self {
+        match self {
             TilingPathInfo::Draw(ref draw_tiling_path_info) => {
                 match draw_tiling_path_info.fill_rule {
                     FillRule::EvenOdd => {

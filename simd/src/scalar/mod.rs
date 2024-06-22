@@ -113,7 +113,7 @@ impl F32x2 {
 
     #[inline]
     pub fn to_f32x4(self) -> F32x4 {
-        F32x4([self[0] as f32, self[1] as f32, 0.0, 0.0])
+        F32x4([self[0], self[1], 0.0, 0.0])
     }
 
     /// Converts these packed floats to integers via rounding.

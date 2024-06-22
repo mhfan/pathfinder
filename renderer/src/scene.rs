@@ -30,7 +30,6 @@ use std::mem;
 use std::ops::Range;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::u64;
 
 static NEXT_SCENE_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -53,7 +52,7 @@ pub struct SceneId(pub u32);
 
 impl Scene {
     /// Creates a new empty scene.
-    #[inline]
+    #[inline] #[allow(clippy::new_without_default)]
     pub fn new() -> Scene {
         let scene_id = SceneId(NEXT_SCENE_ID.fetch_add(1, Ordering::Relaxed) as u32);
         Scene {
@@ -165,6 +164,7 @@ impl Scene {
                     self.display_list.push(DisplayItem::PopRenderTarget);
                 }
                 DisplayItem::DrawPaths(range) => {
+                    #[allow(clippy::needless_range_loop)]
                     for old_path_index in (range.start.0 as usize)..(range.end.0 as usize) {
                         let old_draw_path_id = DrawPathId(draw_path_mapping[old_path_index]);
                         self.push_draw_path_with_index(old_draw_path_id);
@@ -287,9 +287,9 @@ impl Scene {
     /// `SequentialExecutor` to prepare commands on a single thread or `RayonExecutor` to prepare
     /// commands in parallel across multiple threads.
     #[inline]
-    pub fn build<'a, 'b, E>(&mut self,
+    pub fn build<E>(&mut self,
                             options: BuildOptions,
-                            sink: &'b mut SceneSink<'a>,
+                            sink: &mut SceneSink<'_>,
                             executor: &E)
                             where E: Executor {
         let prepared_options = options.prepare(self.bounds);
@@ -361,7 +361,7 @@ impl Scene {
         let mut sink = SceneSink::new(listener, renderer.mode().level);
         self.build(build_options, &mut sink, &executor);
         let mut commands = commands.lock().unwrap();
-        mem::replace(&mut *commands, vec![])
+        mem::take(&mut *commands)
     }
 
     /// A convenience method to build a scene and send the resulting commands to the given
@@ -492,7 +492,7 @@ pub struct PathId(pub u32);
 #[derive(Clone, Debug)]
 pub struct RenderTarget {
     size: Vector2I,
-    name: String,
+    #[allow(unused)] name: String,
 }
 
 /// High-level drawing commands.

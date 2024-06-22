@@ -31,7 +31,7 @@ fn main() {
     let resource_loader = EmbeddedResourceLoader;
 
     let swf_bytes;
-    if let Some(path) = env::args().skip(1).next() {
+    if let Some(path) = env::args().nth(1) {
         match read(path) {
             Ok(bytes) => {
                 swf_bytes = bytes;

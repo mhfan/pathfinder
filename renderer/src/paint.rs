@@ -347,10 +347,10 @@ pub(crate) struct PaintColorTextureMetadata {
     /// How much of a border there needs to be around the image.
     ///
     /// The border ensures clamp-to-edge yields the right result.
-    pub(crate) border: Vector2I,
+    #[allow(unused)] pub(crate) border: Vector2I,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug)] #[allow(unused)]
 pub(crate) struct RadialGradientMetadata {
     /// The line segment that connects the two circles.
     pub(crate) line: LineSegment2F,
@@ -587,7 +587,7 @@ impl Palette {
                                     texture_manager: &mut PaintTextureManager,
                                     render_transform: Transform2F) {
         for (paint, metadata) in self.paints.iter().zip(paint_metadata.iter_mut()) {
-            let mut color_texture_metadata = match metadata.color_texture_metadata {
+            let color_texture_metadata = match metadata.color_texture_metadata {
                 None => continue,
                 Some(ref mut color_texture_metadata) => color_texture_metadata,
             };
@@ -843,7 +843,7 @@ impl GradientTileBuilder {
             })
         }
 
-        let mut data = self.tiles.last_mut().unwrap();
+        let data = self.tiles.last_mut().unwrap();
         let location = TextureLocation {
             page: data.page,
             rect: RectI::new(vec2i(0, data.next_index as i32),

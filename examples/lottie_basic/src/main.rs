@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 fn main() {
-    let path = env::args().skip(1).next().unwrap();
+    let path = env::args().nth(1).unwrap();
     let file = BufReader::new(File::open(path).unwrap());
     let lottie = Lottie::from_reader(file).unwrap();
     println!("{:#?}", lottie);

@@ -95,10 +95,7 @@ impl SceneProxy {
         renderer.begin_scene();
         while let Ok(command) = self.receiver.recv() {
             renderer.render_command(&command);
-            match command {
-                RenderCommand::Finish { .. } => break,
-                _ => {}
-            }
+            if let RenderCommand::Finish { .. } = command { break }
         }
         renderer.end_scene();
     }
