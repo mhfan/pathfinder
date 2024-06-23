@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use arrayvec::ArrayVec;
-use euclid::default::Size2D;
 use font_kit::handle::Handle;
 use font_kit::sources::mem::MemSource;
 use pathfinder_canvas::{Canvas, CanvasFontContext, CanvasRenderingContext2D, LineJoin, Path2D};
@@ -40,15 +39,8 @@ use std::f32::consts::PI;
 use std::iter;
 use std::sync::Arc;
 use std::time::Instant;
-use surfman::{Connection, ContextAttributeFlags, ContextAttributes, GLVersion as SurfmanGLVersion};
-use surfman::{SurfaceAccess, SurfaceType};
 
-use winit::dpi::LogicalSize;
-use winit::platform::run_return::EventLoopExtRunReturn;
-use winit::{event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode}, window::WindowBuilder, event_loop::{EventLoop, ControlFlow}};
-
-#[cfg(not(windows))]
-#[global_allocator]
+#[cfg(not(windows))] #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 const PI_2: f32 = PI * 2.0;
@@ -537,7 +529,7 @@ fn draw_graph(context: &mut CanvasRenderingContext2D, rect: RectF, time: f32) {
     ];
 
     let sample_scale = vec2f(sample_spread, rect.height() * 0.8);
-    let sample_points: ArrayVec<[Vector2F; 6]> = samples.iter()
+    let sample_points: ArrayVec<Vector2F, 6> = samples.iter()
                                                         .enumerate()
                                                         .map(|(index, &sample)| {
         rect.origin() + vec2f(index as f32, sample) * sample_scale
@@ -1461,154 +1453,221 @@ impl DemoData {
     }
 }
 
-fn main() {
-    // Open a window.
-    let mut event_loop = EventLoop::new();
-    let window_size = Size2D::new(WINDOW_WIDTH, WINDOW_HEIGHT);
-    let logical_size = LogicalSize::new(window_size.width as f64, window_size.height as f64);
-    let window = WindowBuilder::new().with_title("NanoVG example port")
-                                     .with_inner_size(logical_size)
-                                     .build(&event_loop)
-                                     .unwrap();
-    // window.show();
+use surfman::{Connection, ContextAttributeFlags, ContextAttributes,
+    SurfaceAccess, SurfaceType, GLVersion as GLVersionSM};
 
-    // Create a `surfman` device. On a multi-GPU system, we'll request the low-power integrated
-    // GPU.
-    let connection = Connection::from_winit_window(&window).unwrap();
-    let native_widget = connection.create_native_widget_from_winit_window(&window).unwrap();
-    let adapter = connection.create_low_power_adapter().unwrap();
-    let mut device = connection.create_device(&adapter).unwrap();
+use winit::{application::ApplicationHandler, window::{Window, WindowId},
+    event_loop::{ActiveEventLoop, EventLoop}, event::{WindowEvent, KeyEvent, ElementState}};
 
-    // Request an OpenGL 3.x context. Pathfinder requires this.
-    let context_attributes = ContextAttributes {
-        version: SurfmanGLVersion::new(3, 0),
-        flags: ContextAttributeFlags::ALPHA,
-    };
-    let context_descriptor = device.create_context_descriptor(&context_attributes).unwrap();
+struct WinitApp {
+    exit: bool,
+    window: Option<Window>,
 
-    // Make the OpenGL context via `surfman`, and load OpenGL functions.
-    let surface_type = SurfaceType::Widget { native_widget };
-    let mut gl_context = device.create_context(&context_descriptor, None).unwrap();
-    let surface = device.create_surface(&gl_context, SurfaceAccess::GPUOnly, surface_type)
-                        .unwrap();
-    device.bind_surface_to_context(&mut gl_context, surface).unwrap();
-    device.make_context_current(&gl_context).unwrap();
-    gl::load_with(|symbol_name| device.get_proc_address(&gl_context, symbol_name));
+    mouse_pos: Vector2F,
+    start_time: Instant,
 
-    // Get the real size of the window, taking HiDPI into account.
-    let hidpi_factor = window.current_monitor().unwrap().scale_factor();
-    let physical_size = logical_size.to_physical::<i32>(hidpi_factor);
-    let framebuffer_size = vec2i(physical_size.width, physical_size.height);
+    fps_graph: PerfGraph,
+    cpu_graph: PerfGraph,
+    gpu_graph: PerfGraph,
 
-    // Load demo data.
-    let resources = FilesystemResourceLoader::locate();
-    let font_data = vec![
-        Handle::from_memory(Arc::new(resources.slurp("fonts/Roboto-Regular.ttf").unwrap()), 0),
-        Handle::from_memory(Arc::new(resources.slurp("fonts/Roboto-Bold.ttf").unwrap()), 0),
-        Handle::from_memory(Arc::new(resources.slurp("fonts/NotoEmoji-Regular.ttf").unwrap()), 0),
-    ];
-    let demo_data = DemoData::load(&resources);
+    demo_data: Option<DemoData>,
+    ctx2d: Option<CanvasRenderingContext2D>,
+    scene_render: Option<(SceneProxy, Renderer<GLDevice>)>,
+    device_glctx: Option<(surfman::Device, surfman::Context)>,
+}
 
-    // Create a Pathfinder GL device.
-    let default_framebuffer = device.context_surface_info(&gl_context)
-                                    .unwrap()
-                                    .unwrap()
-                                    .framebuffer_object;
-    let pathfinder_device = GLDevice::new(GLVersion::GL3, default_framebuffer);
-
-    // Create a Pathfinder renderer.
-    let renderer_mode = RendererMode::default_for_device(&pathfinder_device);
-    let renderer_options = RendererOptions {
-        background_color: Some(rgbf(0.3, 0.3, 0.32)),
-        dest: DestFramebuffer::full_window(framebuffer_size),
-        ..RendererOptions::default()
-    };
-    let mut renderer = Renderer::new(pathfinder_device,
-                                     &resources,
-                                     renderer_mode,
-                                     renderer_options);
-
-    // Initialize font state.
-    let font_source = Arc::new(MemSource::from_fonts(font_data.into_iter()).unwrap());
-    let font_context = CanvasFontContext::new(font_source.clone());
-
-    // Initialize general state.
-    let mut mouse_position = Vector2F::zero();
-    let start_time = Instant::now();
-
-    // Initialize performance graphs.
-    let mut fps_graph = PerfGraph::new(GraphStyle::FPS, "Frame Time");
-    let mut cpu_graph = PerfGraph::new(GraphStyle::MS, "CPU Time");
-    let mut gpu_graph = PerfGraph::new(GraphStyle::MS, "GPU Time");
-
-    // Initialize scene proxy.
-    let mut scene = SceneProxy::new(renderer.mode().level, RayonExecutor);
-
-    // Enter the main loop.
-    let mut exit = false;
-    while !exit {
-        // Make a canvas.
-        let mut context =
-            Canvas::new(framebuffer_size.to_f32()).get_context_2d(font_context.clone());
-
-        // Start performance timing.
-        let frame_start_time = Instant::now();
-        let frame_start_elapsed_time = (frame_start_time - start_time).as_secs_f32();
-
-        // Render the demo.
-        context.scale(hidpi_factor as f32);
-        render_demo(&mut context,
-                    mouse_position,
-                    vec2f(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
-                    frame_start_elapsed_time,
-                    hidpi_factor as f32,
-                    &demo_data);
-
-        // Render performance graphs.
-        let cpu_frame_elapsed_time = (Instant::now() - frame_start_time).as_secs_f32();
-        fps_graph.render(&mut context, vec2f(5.0, 5.0));
-        cpu_graph.render(&mut context, vec2f(210.0, 5.0));
-        gpu_graph.render(&mut context, vec2f(415.0, 5.0));
-
-        // Render the canvas to screen.
-        let canvas = context.into_canvas();
-        scene.replace_scene(canvas.into_scene());
-        scene.build_and_render(&mut renderer, BuildOptions::default());
-
-        // Present the rendered canvas via `surfman`.
-        let mut surface = device.unbind_surface_from_context(&mut gl_context).unwrap().unwrap();
-        device.present_surface(&gl_context, &mut surface).unwrap();
-        device.bind_surface_to_context(&mut gl_context, surface).unwrap();
-
-        // Add stats to performance graphs.
-        if let Some(gpu_time) = renderer.last_rendering_time() {
-            let cpu_build_time = renderer.stats().cpu_build_time.as_secs_f32();
-            let gpu_time = gpu_time.total_time().as_secs_f32();
-            fps_graph.push(cpu_frame_elapsed_time + cpu_build_time.max(gpu_time));
-            cpu_graph.push(cpu_frame_elapsed_time + cpu_build_time);
-            gpu_graph.push(gpu_time);
+impl WinitApp {
+    fn new<T>(_event_loop: &EventLoop<T>) -> Self {
+        Self {
+            start_time: Instant::now(), mouse_pos: Default::default(),
+            fps_graph: PerfGraph::new(GraphStyle::FPS, "Frame Time"),
+            cpu_graph: PerfGraph::new(GraphStyle::MS, "CPU Time"),
+            gpu_graph: PerfGraph::new(GraphStyle::MS, "GPU Time"),
+            demo_data: None, ctx2d: None, exit: false,
+            window: None, scene_render: None, device_glctx: None,
         }
+    }
+}
 
-        event_loop.run_return(|event,_, control| {
-            match event {
-                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } |
-                Event::WindowEvent {
-                    event: WindowEvent::KeyboardInput {
-                        input: KeyboardInput { virtual_keycode: Some(VirtualKeyCode::Escape), .. },
-                        ..
-                    },
-                    ..
-                } => exit = true,
-                Event::WindowEvent { event: WindowEvent::CursorMoved { position, .. }, .. } => {
-                    mouse_position = vec2f(position.x as f32, position.y as f32);
-                }
-                _ => {
-                	*control = ControlFlow::Exit;
-                }
-            }
-        });
+impl Drop for WinitApp {
+    fn drop(&mut self) {
+        if let Some((device, glctx)) = &mut self.device_glctx {
+            device.destroy_context(glctx).unwrap();
+        }
+    }
+}
+
+impl ApplicationHandler for WinitApp {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        /* let mut wsize = event_loop.primary_monitor()
+            .map(|monitor| monitor.size()).unwrap();
+            //.unwrap_or(winit::dpi::PhysicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT));
+        wsize.width  /= 2;  wsize.height /= 2; */
+
+        let wsize = winit::dpi::LogicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT);
+        let wattr = Window::default_attributes()
+            .with_inner_size(wsize).with_title("NanoVG example port");
+        self.window = event_loop.create_window(wattr).ok();
+        let Some(window) = &self.window else { return };
+
+        let connection = Connection::new().unwrap();
+        //let connection = surfman::SystemConnection::new().unwrap();
+        let adapter = connection.create_adapter().unwrap();
+        //let adapter = connection.create_hardware_adapter().unwrap();
+        //let adapter = connection.create_software_adapter().unwrap();
+        //let adapter = connection.create_low_power_adapter().unwrap();
+        let mut device = connection.create_device(&adapter).unwrap();
+
+        let wsize = window.inner_size();
+        use winit::raw_window_handle::HasWindowHandle;
+        let surface_type = SurfaceType::Widget {
+            native_widget: connection.create_native_widget_from_window_handle(
+                window.window_handle().unwrap(),
+                (wsize.width as i32, wsize.height as i32).into()).unwrap()
+        };
+
+        let context_attributes = ContextAttributes {
+            //flags: ContextAttributeFlags::empty(),
+            flags: ContextAttributeFlags::ALPHA,
+            version: GLVersionSM::new(3, 3),
+        };
+        let context_descriptor =
+            device.create_context_descriptor(&context_attributes).unwrap();
+        let mut glctx = device.create_context(&context_descriptor, None).unwrap();
+
+        let surface = device.create_surface(&glctx, SurfaceAccess::GPUOnly,
+            //SurfaceType::Generic { size: (wsize.width as i32, wsize.height as i32).into() }
+            surface_type    // XXX:
+        ).unwrap();     // https://github.com/servo/surfman/blob/main/examples/offscreen.rs
+
+        device.bind_surface_to_context(&mut glctx, surface).unwrap();
+        device.make_context_current(&glctx).unwrap();
+        gl::load_with(|symbol_name| device.get_proc_address(&glctx, symbol_name));
+
+        /* let surface = device.create_surface(SurfaceAccess::GPUCPU,
+            surface_type).unwrap();     // for macOS SystemConnection
+
+        // XXX: drawing data buffer works like pixels/softbuffer
+        device.lock_surface_data(&mut surface).unwrap().data().copy_from_slice(&data);
+        device.present_surface(&mut surface).unwrap(); */
+
+        let res = FilesystemResourceLoader::locate();
+        self.demo_data = Some(DemoData::load(&res));    // Load demo data.
+
+        let font_data = vec![
+            Handle::from_memory(Arc::new(res.slurp("fonts/Roboto-Regular.ttf").unwrap()), 0),
+            Handle::from_memory(Arc::new(res.slurp("fonts/Roboto-Bold.ttf").unwrap()), 0),
+            Handle::from_memory(Arc::new(res.slurp("fonts/NotoEmoji-Regular.ttf").unwrap()), 0),
+        ];
+
+        // Initialize font state.
+        let font_ctx = CanvasFontContext::new(Arc::new(
+            MemSource::from_fonts(font_data.into_iter()).unwrap()));
+        //let font_ctx = CanvasFontContext::from_system_source();
+
+        // Create a Pathfinder GL device.
+        let gldev = GLDevice::new(GLVersion::GL3,   // XXX: GL4/GLES3?
+            device.context_surface_info(&glctx).unwrap().unwrap().framebuffer_object);
+        // Get the real size of the window, taking HiDPI into account.
+
+        // Create a Pathfinder renderer.
+        let renderer_mode = RendererMode::default_for_device(&gldev);
+        let renderer_options = RendererOptions {
+            background_color: Some(rgbf(0.3, 0.3, 0.3)),
+            dest: DestFramebuffer::full_window(vec2i(wsize.width as _, wsize.height as _)),
+            ..RendererOptions::default()
+        };
+
+        let renderer = Renderer::new(gldev, &res,
+            renderer_mode, renderer_options);
+        let scene = SceneProxy::new(renderer.mode().level, RayonExecutor);
+
+        let mut ctx2d = Canvas::new(
+            vec2f(wsize.width as _, wsize.height as _)).get_context_2d(font_ctx);
+        let hidpi_factor = window.current_monitor().unwrap().scale_factor() as f32;
+        ctx2d.scale(hidpi_factor);  self.ctx2d = Some(ctx2d);
+
+        self.scene_render = Some((scene, renderer));
+        self.device_glctx = Some((device, glctx));
     }
 
-    // Clean up.
-    drop(device.destroy_context(&mut gl_context));
+    fn window_event(&mut self, _event_loop: &ActiveEventLoop,
+        _wid: WindowId, event: WindowEvent) {
+        let Some(_window) = self.window.as_mut() else { return };
+        use winit::keyboard::{Key, NamedKey};
+
+        match event {
+            WindowEvent::Destroyed => dbg!(),
+            WindowEvent::CloseRequested => self.exit = true,
+            WindowEvent::KeyboardInput { event: KeyEvent {
+                logical_key: key, state: ElementState::Pressed, ..
+            }, .. } => match key.as_ref() {
+                Key::Named(NamedKey::Escape) => self.exit = true,
+                Key::Character(_ch) => (),
+                _ => (),
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                self.mouse_pos = vec2f(position.x as _, position.y as _);
+            },
+            WindowEvent::RedrawRequested => {
+                let Some(ctx2d) = &mut self.ctx2d else { return };
+                let scale = ctx2d.transform().m11();
+                    //window.current_monitor().unwrap().scale_factor() as f32;
+
+                let frame_time = Instant::now();
+                render_demo(ctx2d, self.mouse_pos / scale,
+                    vec2f(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32),
+                    self.start_time.elapsed().as_secs_f32(), scale,
+                    self.demo_data.as_ref().unwrap());
+                let frame_time = frame_time.elapsed().as_secs_f32();
+
+                // Render performance graphs.
+                self.fps_graph.render(ctx2d, vec2f(5.0, 5.0));
+                self.cpu_graph.render(ctx2d, vec2f(210.0, 5.0));
+                self.gpu_graph.render(ctx2d, vec2f(415.0, 5.0));
+
+                let Some((scene, renderer)) =
+                    &mut self.scene_render else { return };
+
+                // Render the canvas to screen.
+                scene.replace_scene(ctx2d.canvas_mut().take_scene());
+                //let mut scene = SceneProxy::from_scene(   // XXX: performance downgrade
+                //    ctx2d.canvas_mut().take_scene(), renderer.mode().level, RayonExecutor);
+                scene.build_and_render(renderer, BuildOptions { //subpixel_aa_enabled: true,
+                    ..BuildOptions::default() });
+
+                let Some((device, glctx)) =
+                    &mut self.device_glctx else { return };
+
+                // Present the rendered canvas via `surfman`.
+                let mut surface =
+                    device.unbind_surface_from_context(glctx).unwrap().unwrap();
+                device.present_surface(glctx, &mut surface).unwrap();
+                device.bind_surface_to_context(glctx, surface).unwrap();
+
+                // Add stats to performance graphs.
+                if  let Some(gpu_time) = renderer.last_rendering_time() {
+                    let cpu_time = renderer.stats().cpu_build_time.as_secs_f32();
+                    let gpu_time = gpu_time.total_time().as_secs_f32();
+                    self.fps_graph.push(frame_time + cpu_time.max(gpu_time));
+                    self.cpu_graph.push(frame_time + cpu_time);
+                    self.gpu_graph.push(gpu_time);
+                }
+            },
+            _ => (),
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.exit {    self.window = None;   event_loop.exit(); }
+        if let Some(window) = &self.window { window.request_redraw(); }
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let event_loop = EventLoop::new()?;
+    let mut app = WinitApp::new(&event_loop);
+    //use winit::platform::run_on_demand::EventLoopExtRunOnDemand;
+    event_loop.run_app(&mut app)?; //.run_app_on_demand(&mut app)?;
+    Ok(())
 }
