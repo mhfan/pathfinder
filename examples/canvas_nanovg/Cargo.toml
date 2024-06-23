@@ -1,34 +1,54 @@
+
 [package]
 name = "canvas_nanovg"
 version = "0.1.0"
-authors = ["Patrick Walton <pcwalton@mimiga.net>"]
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = [ "Patrick Walton <pcwalton@mimiga.net>", "MeiHui FAN <mhfan@ustc.edu>" ]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arrayvec = "0.7"
-font-kit = "0.6"
 gl = "0.14"
-
+usvg = "0.42"
 surfman = "0.9"
+font-kit = "0.6"    # for NanoVG demo
+image = { version = "0.25", default-features = false, features = [ "png" ] }
 winit = { version = "0.30", features = [ "rwh_06"] }
 
+pathfinder_color  = { path = "../../color" }
+pathfinder_canvas = { path = "../../canvas", features = [ "pf-text" ] }
+pathfinder_content   = { path = "../../content" }
+pathfinder_geometry  = { path = "../../geometry" }
+pathfinder_renderer  = { path = "../../renderer" }
+pathfinder_resources = { path = "../../resources" }
+pathfinder_simd = { path = "../../simd" }
+pathfinder_gpu  = { path = "../../gpu" }
+pathfinder_gl   = { path = "../../gl" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 #glutin = { version = "0.32", default-features = false }
 #glutin-winit = { version = "0.5", default-features = false }
 # https://github.com/rust-windowing/glutin/blob/master/glutin_examples/src/lib.rs
 #raw-window-handle = "0.6"
 
-log = { version = "0.4", features = [ "release_max_level_info" ] }
-image = { version = "0.25", default-features = false, features = [ "png" ] }
-
-pathfinder_canvas = { path = "../../canvas", features = [ "pf-text" ] }
-pathfinder_color  = { path = "../../color" }
-pathfinder_content  = { path = "../../content" }
-pathfinder_geometry = { path = "../../geometry" }
-pathfinder_gl  = { path = "../../gl" }
-pathfinder_gpu = { path = "../../gpu" }
-pathfinder_renderer  = { path = "../../renderer" }
-pathfinder_resources = { path = "../../resources" }
-pathfinder_simd = { path = "../../simd" }
-
 [target.'cfg(not(windows))'.dependencies]
-jemallocator = "0.5"    # show better performance in fps
+jemallocator = "0.5"    # show better (10~20%) performance/fps
+
+[build-dependencies]
+chrono = "0.4"
+
+#[profile.dev]
+##incremental = false
+#opt-level = 2   # Enable a small amount of optimization in debug mode
+#
+#[profile.dev.package."*"]
+#opt-level = 3   # Enable high optimizations for dependencies, but not for own code.
+#
+#[profile.release]
+#codegen-units = 1
+#strip = 'debuginfo'
+#panic = 'abort'
+##opt-level = 3   # default level
+#lto = 'fat' # true
+
