@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 gl = "0.14"
-glutin = "0.23"
+glutin = "0.32"
 
 [dependencies.pathfinder_canvas]
 path = "../../canvas"

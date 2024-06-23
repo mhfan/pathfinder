@@ -2,60 +2,33 @@
 name = "canvas_nanovg"
 version = "0.1.0"
 authors = ["Patrick Walton <pcwalton@mimiga.net>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-arrayvec = "0.5"
+arrayvec = "0.7"
 font-kit = "0.6"
 gl = "0.14"
 
-[dependencies.euclid]
-version = "0.20"
-features = []
+surfman = "0.9"
+winit = { version = "0.30", features = [ "rwh_06"] }
 
-[dependencies.image]
-version = "0.23"
-default-features = false
-features = ["png"]
+#glutin = { version = "0.32", default-features = false }
+#glutin-winit = { version = "0.5", default-features = false }
+# https://github.com/rust-windowing/glutin/blob/master/glutin_examples/src/lib.rs
+#raw-window-handle = "0.6"
 
-[dependencies.log]
-version = "0.4"
-features = ["release_max_level_info"]
+log = { version = "0.4", features = [ "release_max_level_info" ] }
+image = { version = "0.25", default-features = false, features = [ "png" ] }
 
-[dependencies.pathfinder_canvas]
-path = "../../canvas"
-features = ["pf-text"]
-
-[dependencies.pathfinder_color]
-path = "../../color"
-
-[dependencies.pathfinder_content]
-path = "../../content"
-
-[dependencies.pathfinder_geometry]
-path = "../../geometry"
-
-[dependencies.pathfinder_gl]
-path = "../../gl"
-
-[dependencies.pathfinder_gpu]
-path = "../../gpu"
-
-[dependencies.pathfinder_renderer]
-path = "../../renderer"
-
-[dependencies.pathfinder_resources]
-path = "../../resources"
-
-[dependencies.pathfinder_simd]
-path = "../../simd"
-
-[dependencies.surfman]
-version = "^0.4"
-features = ["sm-winit", "sm-x11"]
-
-[dependencies.winit]
-version = "^0.24" # 0.19.4 causes build errors https://github.com/rust-windowing/winit/pull/1105
+pathfinder_canvas = { path = "../../canvas", features = [ "pf-text" ] }
+pathfinder_color  = { path = "../../color" }
+pathfinder_content  = { path = "../../content" }
+pathfinder_geometry = { path = "../../geometry" }
+pathfinder_gl  = { path = "../../gl" }
+pathfinder_gpu = { path = "../../gpu" }
+pathfinder_renderer  = { path = "../../renderer" }
+pathfinder_resources = { path = "../../resources" }
+pathfinder_simd = { path = "../../simd" }
 
 [target.'cfg(not(windows))'.dependencies]
-jemallocator = "0.3"
+jemallocator = "0.5"    # show better performance in fps
