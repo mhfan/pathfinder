@@ -51,6 +51,7 @@ default-members = [
     #"examples/canvas_text",
     #"examples/lottie_basic",
     #"examples/swf_basic",
+    "examples/canvas_nanovg",
     "geometry",
     "gl",
     "gpu",
