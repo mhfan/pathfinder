@@ -24,5 +24,7 @@ node_modules
 .vscode
 *.code-workspace
 
+/Cargo.lock
+
 # Emacs
 *~
